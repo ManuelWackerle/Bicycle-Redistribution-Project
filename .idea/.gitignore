@@ -6,3 +6,11 @@
 /dataSources.local.xml
 # Editor-based HTTP Client requests
 /httpRequests/
+
+
+# Ignore Large data file
+MVG Code/MVG_Rad_Fahrten_2021.csv
+
+#Ignore Pickled files and cache
+Saved/
+__pycache__/
