@@ -66,32 +66,35 @@ class VNS(object):
             space.append(self.capacity) #remaining space on vehicle
             current.append(source)
 
-        while len(vehicles) != 0 and stops < len(graph.nodes)*2:
-            for l in vehicles:
-                # while distance < budget and stops < len(graph.nodes):  # within distance budget
-                next, next_score, to_move = None, 0, 0
-                for n, dict in graph.nodes.items():
-                    score, move = 0, 0
-                    if n != current[l]:
-                        dist = graph.edges[current[l], n]['dist']
-                        sup = graph.nodes[n]['sup']
-                        if sup > 0:
-                            move = -min(sup, space[l])
-                            score = -(move) * (mean / dist) ** 4
-                        elif sup < 0:
-                            move = min(-sup, loads[l])
-                            score = (move) * (mean / dist) ** 4
-                        if score >= next_score:
-                            next, next_score, to_move = n, score, move
-                self.routes[l].append(next)
-                distances[l] += graph.edges[current[l], next]['dist']
-                current[l] = next
-                loads[l] -= to_move
-                space[l] += to_move
-                graph.nodes[next]['sup'] += to_move
-                stops += 1
-                if distances[l] > budget:
-                    remove.append(l)
+        while len(vehicles) != 0:
+            if stops > len(graph.nodes)*2:
+                remove = vehicles
+            else:
+                for l in vehicles:
+                    # while distance < budget and stops < len(graph.nodes):  # within distance budget
+                    next, next_score, to_move = None, 0, 0
+                    for n, dict in graph.nodes.items():
+                        score, move = 0, 0
+                        if n != current[l]:
+                            dist = graph.edges[current[l], n]['dist']
+                            sup = graph.nodes[n]['sup']
+                            if sup > 0:
+                                move = -min(sup, space[l])
+                                score = -(move) * (mean / dist)
+                            elif sup < 0:
+                                move = min(-sup, loads[l])
+                                score = (move) * (mean / dist)
+                            if score >= next_score:
+                                next, next_score, to_move = n, score, move
+                    self.routes[l].append(next)
+                    distances[l] += graph.edges[current[l], next]['dist']
+                    current[l] = next
+                    loads[l] -= to_move
+                    space[l] += to_move
+                    graph.nodes[next]['sup'] += to_move
+                    stops += 1
+                    if distances[l] > budget:
+                        remove.append(l)
             for l in remove:
                 vehicles.remove(l)
                 while loads[l] > 0 and stops < 10:
@@ -113,7 +116,7 @@ class VNS(object):
                     space[l] += to_move
                     stops += 1
                     graph.nodes[next]['sup'] += to_move
-                self.routes[l].append(source)
+                self.routes[l].append('0')
                 distances[l] += graph.edges[current[l], source]['dist']
             remove = []
             self.distances = distances
@@ -122,6 +125,7 @@ class VNS(object):
             for r in range(len(self.routes)):
                 routes_str += "\nvehicle {}: {}, distance = {}".format(r, str(self.routes[r]), distances[r])
         self.show_info(routes_str)
+        return self.routes
 
 
     def greedy_routing_v2(self):
@@ -192,7 +196,7 @@ class VNS(object):
             self.imbalance = -1
 
         #This is where the magic happens
-        value, dict = nx.maximum_flow(mf_graph, 's', 't') #TODO: investigate this algorithm exactly and see if it can be done better
+        value, dict = nx.maximum_flow(mf_graph, 's', 't') #, flow_func=nx.algorithms.flow.shortest_augmenting_path) #TODO: investigate this algorithm exactly and see if it can be done better
         self.allocated = value
 
         if value != total_source or value != total_sink:
@@ -202,7 +206,7 @@ class VNS(object):
             self.show_info("Bike allocation is exact. Total allocated bicycles: {}".format(value))
 
         self.show_header("Generating instructions")
-
+        self.instructions = []
         for p in range(len(self.routes)):
             self.instructions.append([])
             path = self.routes[p]
@@ -232,42 +236,84 @@ class VNS(object):
         """
         pass
 
+    def set_routes(self, routes, instr=None):
+        success = True
+        if len(routes) != self.num_vehicles:
+            self.show_warning("Set routes failed. Number of routes needs to match number of vehicles ({})"
+                              .format(self.num_vehicles))
+            success = False
+        else:
+            for l in range(len(routes)):
+                route = routes[l]
+                stops = len(route)
+                if stops < 3:
+                    self.show_warning("Set routes failed. Routes need to contain at least 3 stops")
+                    success = False
+                    break
+        if success:
+            self.routes = routes
+            self.recalculate_distance()
+            if instr is not None:
+                if len(instr) != len(routes):
+                    self.show_warning("instr need to be an array of the same size as routes")
+                else:
+                    self.instructions = instr
 
     def remove_unused_stops(self):
+        """
+        Given a set of vehicle routes, simply removes all the stops where the vehicle neither load nor unloads any bikes.
+        """
         for l in range(len(self.instructions)):
             remove = []
+            node = None
             distance = 0
             prev_load = 0
-            prev_node = self.routes[l][0]
             for s in range(1, len(self.instructions[l])):
                 node = self.routes[l][s]
                 load = self.instructions[l][s]
                 if load == prev_load:
                     remove.append(s)
-                else:
-                    distance += self.model.edges[prev_node, node]['dist']
-                    prev_node = node
                 prev_load = load
             remove.reverse()
             for r in remove:
                 del self.instructions[l][r]
                 del self.routes[l][r]
-            self.distances[l] = distance
+        self.recalculate_distance()
+
+
+    def recalculate_distance(self):
+        self.distances = []
+        for l in range(len(self.routes)):
+            route = self.routes[l]
+            dist = 0
+            prev = route[0]
+            for s in range(1,len(route)):
+                if prev == route[s]:
+                    self.show_warning("same route twice in sequence - might be a mistake")
+                else:
+                    dist += self.model.edges[prev, route[s]]['dist']
+                prev = route[s]
+            self.distances.append(dist)
 
 
     def display_results(self,show_instructions=True):
+        """
+        Displays the information in self.routes and self.instructions in a human readable way
+        """
         results = "Results\t\t"
         if show_instructions:
             results += "total distance || instructions   <station>: <load/unload bikes> (<total on vehicle>)"
             for l in range(len(self.routes)):
-                line = "\nVehicle #{:<3} {:>11}km |".format(l,self.distances[l]/1000)
+                line = "\nVehicle #{:<3} {:>11}km |".format(l, self.distances[l]/1000)
                 prev_load = 0
                 for s in range(len(self.instructions[l])):
                     load = self.instructions[l][s]
                     diff = load - prev_load
                     prev_load = load
                     instr = 'l' if diff >= 0 else 'u'
-                    line += "|{:>4}: ".format(self.routes[l][s]) + instr + "{:<2}({:2}) ".format(abs(diff),load)
+                    # a, b = self.routes[l][s], self.routes[l][s+1]
+                    # dist = self.model.edges[a, b]['dist'] if a != b else 0
+                    line += "|{:>4}: ".format(self.routes[l][s]) + instr + "{:<2}({:2})".format(abs(diff), load)
                 results += line + "|   0: u{:<2}( 0) |".format(0)
         d = sum(self.distances)/1000
         success = bcolors.OKGREEN if self.allocated == self.imbalance else bcolors.FAIL
@@ -277,9 +323,12 @@ class VNS(object):
 
 
 
-    def _reset(self):
+    def reset(self):
         self.routes = []
         self.instructions = []
+        self.distances = []
+        self.imbalance = 0
+        self.allocated = 0
 
 
 
