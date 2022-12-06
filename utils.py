@@ -16,15 +16,17 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 
-def display_graph(Graph, node_pos=None, edge_list=None):
+def display_graph(Graph, node_pos=None, edge_list=None, title=None):
+    header = "Graph" if title is None else title
     use_pos = node_pos is not None
     pos = {} if use_pos else None
     labels = {}
     for node, attr in Graph.nodes.items():
-        labels[node] = "{}({})".format(node, attr['sup'])
+        labels[node] = "{}".format(node) #attr['sup'])
         if use_pos:
             pos[node] = node_pos[node]['pos']
-    nx.draw_networkx(Graph, pos=pos, edgelist=edge_list, node_size=900, node_color='#FEECD2', labels=labels)
+    nx.draw_networkx(Graph, pos=pos, edgelist=edge_list, node_size=300, node_color='#FEECD2', labels=labels)
+    plt.title(title)
     plt.draw()
     plt.show()
 
@@ -41,6 +43,17 @@ def edge_data_as_numpy(graph: nx.Graph, data_str):
     for e, data in graph.edges.items():
         edges.append(data[data_str])
     return np.array(edges)
+
+
+def dict_data_as_numpy(dict: dict, data_str):
+    arr = []
+    for e, data in dict.items():
+        arr.append(data[data_str])
+    return np.array(arr)
+
+
+def reformat_pos(graph: nx.Graph):
+    x_list = nodes_data_as_numpy(graph, "")
 
 
 def metric_completion(graph):
@@ -61,10 +74,10 @@ def print_graph(Graph):
 
 def save_object(item, save_as="pickle_file"):
     file_path = "Saved/" + save_as + ".p"
-    if exists(file_path):
-        pickle.dump(item, open(file_path, "wb"))
-    else: #Todo: automatically rename file with incrementing number and save
-        raise FileExistsError
+    # if not exists(file_path):
+    pickle.dump(item, open(file_path, "wb"))
+    # else: #Todo: automatically rename file with incrementing number and save
+    #     raise FileExistsError
 
 
 def extract_saved_object(file_name):
