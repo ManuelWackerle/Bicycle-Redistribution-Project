@@ -30,6 +30,26 @@ def display_graph(Graph, node_pos=None, edge_list=None, title=None):
     plt.draw()
     plt.show()
 
+def visualize_routes(routes, node_data):
+    station_color = 'blue'
+    route_color = ['red', 'blue', 'green', 'purple', 'black', 'yellow']
+    for i in range(len(node_data)):
+        x, y = node_data[str(i)]['pos']
+        plt.scatter(x, y, color=station_color)
+    for route_num, route in enumerate(routes):
+        for j, station in enumerate(route):
+            if j == 0:
+                continue
+            previous_station = route[j]
+            current_station = route[j-1]
+            x_line = [node_data[str(previous_station)]['pos'][0], node_data[str(current_station)]['pos'][0]]
+            y_line = [node_data[str(previous_station)]['pos'][1], node_data[str(current_station)]['pos'][1]]
+            plt.plot(x_line, y_line, color=route_color[route_num])
+    plt.axis('equal')
+    plt.show()
+
+
+
 
 def nodes_data_as_numpy(graph: nx.Graph, data_str):
     nodes = []
