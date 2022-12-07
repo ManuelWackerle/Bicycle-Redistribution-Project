@@ -138,7 +138,7 @@ class VNS(object):
 
         pass  # Todo: implement
 
-    def greedy_routing_v3(self, budget, source=0, DEBUG=False):
+    def greedy_routing_v3(self, budget, source='0', DEBUG=False):
 
         self.show_header("Searching for routes using basic greedy")
         graph = self.model.copy()
@@ -159,17 +159,18 @@ class VNS(object):
         if np.sum(demand_array) != 0:
             raise ValueError('Average demand is not equal to zero.')
 
-        if demand_array[source] != 0:
+        if demand_array[int(source)] != 0:
             raise ValueError('Depot should be balanced.')
 
         routes = []
+        distances = []
         for vehicle in range(K):
             if DEBUG:
                 print("Route " + str(vehicle) + " is considered.")
 
             # initial state for a vehicle is set
             route = []
-            current_station = 0
+            current_station = int(source)
             route.append(current_station)
             vehicle_load = 0
             route_cost = 0
@@ -347,7 +348,8 @@ class VNS(object):
                     # print(np.sum(demand_array))
                     # print(vehicle_load)
                     # raise ValueError('The number of bikes changed during the computation.')
-
+            route = list(map(str, route))
+            distances.append(route_cost)
             routes.append(route)
             print("Route #", vehicle, ": ", route)
 
@@ -357,9 +359,7 @@ class VNS(object):
         else:
             print("Balance is reached.")
 
-        for route in routes:
-            pass
-
+        self.distances = distances
         self.routes = routes
 
         return self.routes
