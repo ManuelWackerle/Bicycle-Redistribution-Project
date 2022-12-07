@@ -40,8 +40,8 @@ if __name__ == '__main__':
     vns = VNS(graph, num_vehicles=10, vehicle_capacity=25, verbose=1)
     start2 = time.time()
 
-    # vns.greedy_routing_v1(budget=100000)
-    vns.greedy_routing_v3(budget=100000)
+    routes_initial = vns.greedy_routing_v1(budget=100000)
+    visualize_routes(routes_initial, node_info)
     vns.calculate_loading_MF()
     vns.display_results()
     vns.remove_unused_stops()
