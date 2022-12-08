@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import pickle
 import numpy as np
+import random
 from os.path import exists
 
 class bcolors:
@@ -31,8 +32,9 @@ def display_graph(Graph, node_pos=None, edge_list=None, title=None):
     plt.show()
 
 def visualize_routes(routes, node_data):
-    station_color = 'grey'
-    route_color = ['red', 'blue', 'green', 'purple', 'black', 'yellow']
+    station_color = 'blue'
+    get_colors = lambda n: ["#%06x" % random.randint(0, 0xFFFFFF) for _ in range(n)]
+    route_color = get_colors(len(routes))
     for i in range(len(node_data)):
         x, y = node_data[str(i)]['pos']
         plt.scatter(x, y, color=station_color)
@@ -81,8 +83,27 @@ def metric_completion(graph):
         for m in graph.nodes:
             if n != m:
                 dist = nx.shortest_path_length(graph, n, m, weight='weight')
+                print(dist)
                 G_metric.add_edge(n, m, weight=dist)
     return G_metric
+
+def compute_cost_matrix(graph):
+    N = len(graph.nodes)
+    cost_matrix = np.zeros((N, N))
+    for i, n in enumerate(graph.nodes):
+        for j, m in enumerate(graph.nodes):
+            if i != j:
+                cost_matrix[i][j] = graph.edges[n, m]['dist']
+                # cost_matrix[i][j] = nx.shortest_path_length(graph, n, m, weight='weight')
+            else:
+                cost_matrix[i][j] = 0
+    return cost_matrix
+
+def compute_demand_array(graph):
+    demand_array = []
+    for _, n in enumerate(graph.nodes):
+        demand_array.append(graph.nodes[n]['sup'])
+    return demand_array
 
 
 def print_graph(Graph):
