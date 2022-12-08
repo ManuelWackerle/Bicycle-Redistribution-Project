@@ -252,7 +252,6 @@ class VNS(object):
                                     break
                                 elif deliverable_bikes < 0:
                                     # gain_ratio[target_station] is positive (pickup)
-                                    # вот проблема, не учтен лоад виакл
                                     bike_delta_array[target_station] = min(-deliverable_bikes-vehicle_load, bike_delta)
                                     gain_ratio[target_station] = bike_delta_array[target_station] / cost_matrix[
                                         current_station, target_station]
