@@ -31,7 +31,7 @@ def display_graph(Graph, node_pos=None, edge_list=None, title=None):
     plt.show()
 
 def visualize_routes(routes, node_data):
-    station_color = 'blue'
+    station_color = 'grey'
     route_color = ['red', 'blue', 'green', 'purple', 'black', 'yellow']
     for i in range(len(node_data)):
         x, y = node_data[str(i)]['pos']
@@ -47,8 +47,6 @@ def visualize_routes(routes, node_data):
             plt.plot(x_line, y_line, color=route_color[route_num])
     plt.axis('equal')
     plt.show()
-
-
 
 
 def nodes_data_as_numpy(graph: nx.Graph, data_str):
