@@ -140,7 +140,7 @@ class VNS(object):
 
     def greedy_routing_v3(self, budget, source='0', DEBUG=False):
 
-        self.show_header("Searching for routes using basic greedy")
+        self.show_header("Searching for routes using advanced greedy.")
         graph = self.model.copy()
 
         N = len(graph.nodes)  # number of stations (including depot)
@@ -149,9 +149,9 @@ class VNS(object):
 
         cost_limit = budget  # cost limit for a route of one vehicle
         cost_matrix = utils.compute_cost_matrix(graph)
+
         if np.any((np.diagonal(cost_matrix))):
             raise ValueError('Cost matrix diagonal should be zero.')
-
 
         # 5 means that 5 bicycles should be picked up, and -3 means that 3 bikes should be delivered
         demand_array = utils.compute_demand_array(graph)
@@ -181,11 +181,10 @@ class VNS(object):
                 if DEBUG:
                     print(str(counter) + " iteration of " + str(vehicle) + " route.")
                     print("Current route:", route)
-                counter += 1
-                if DEBUG:
                     print("Demand array:", demand_array)
-                bike_delta_array = np.zeros(N)
-                gain_ratio = np.zeros(N)
+                    print("Vehicle load:", vehicle_load)
+                bike_delta_array = np.zeros(N)  # load and delivery instructions for all target stations
+                gain_ratio = np.zeros(N)  # gain ratio for all target stations
                 for target_station in range(N):
                     if DEBUG:
                         print("Target station " + str(target_station) + " with a disbalance of " + str(
@@ -201,7 +200,7 @@ class VNS(object):
                             print("[=] It is a pickup station.")
 
                         if (route_cost + cost_matrix[current_station, target_station] +
-                                cost_matrix[target_station, 0] > cost_limit):
+                                cost_matrix[target_station, int(source)] > cost_limit):
                             # costs will be exceeded even if visiting only a pickup station
                             # gain_ratio is set to zero
                             # move to the next target station
@@ -215,8 +214,8 @@ class VNS(object):
                         route_delivery.append(target_station_tmp)
 
                         bike_delta = min(demand_array_tmp[target_station_tmp], Q - vehicle_load)
-                        # demand_array_tmp[target_station_tmp] -= bike_delta
-                        deliverable_bikes = 0
+                        deliverable_bikes = 0  # the number of bikes that can be delivered after a pickup is done
+
                         while True:
                             # gain_ratio_delivery is set to zero for every station after each iteration
                             gain_ratio_delivery = np.zeros(N)
@@ -239,17 +238,13 @@ class VNS(object):
                                         if deliverable_bikes_array[delivery_station] > 0:
                                             raise ValueError(
                                                 'deliverable_bikes_array value cannot be larger than zero.')
-                                        gain_ratio_delivery[delivery_station] = deliverable_bikes_array[
-                                                                                    delivery_station] / \
-                                                                                cost_matrix[
-                                                                                    target_station_tmp, delivery_station]
-
-                            if DEBUG:
-                                pass
-                                # print("Delivery station have the following deliverable bikes:", deliverable_bikes_array)
-                                # print("Delivery station have the following gain ratios:", gain_ratio_delivery)
+                                        gain_ratio_delivery[delivery_station] = deliverable_bikes_array[delivery_station] / cost_matrix[target_station_tmp, delivery_station]
 
                             if not (np.any(gain_ratio_delivery)):
+                                # no feasible delivery station was found
+                                # delivery root search ends here
+                                if DEBUG:
+                                    print("Delivery route:", route_delivery)
                                 if deliverable_bikes == 0:
                                     # no feasible station that could be visited was found
                                     # break the "while True" cycle for a delivery route
@@ -257,7 +252,8 @@ class VNS(object):
                                     break
                                 elif deliverable_bikes < 0:
                                     # gain_ratio[target_station] is positive (pickup)
-                                    bike_delta_array[target_station] = min(-deliverable_bikes, bike_delta)
+                                    # вот проблема, не учтен лоад виакл
+                                    bike_delta_array[target_station] = min(-deliverable_bikes-vehicle_load, bike_delta)
                                     gain_ratio[target_station] = bike_delta_array[target_station] / cost_matrix[
                                         current_station, target_station]
                                     break
@@ -284,7 +280,7 @@ class VNS(object):
                         if DEBUG:
                             print("[=] It is a delivery station.")
                         if (route_cost + cost_matrix[current_station, target_station] +
-                                cost_matrix[target_station, 0] <= cost_limit):
+                                cost_matrix[target_station, int(source)] <= cost_limit):
                             bike_delta_array[target_station] = -min(-demand_array[target_station], vehicle_load)
 
                             # gain_ratio[target_station] is negative (delivery)
@@ -305,14 +301,14 @@ class VNS(object):
                 if not (np.any(gain_ratio)):
                     # no feasible station that could be visited was found
                     # break the "while True" cycle for a route
-                    if route[-1] != 0:
+                    if route[-1] != int(source):
                         # if a vehicle is not currently at the depot, it should return
-                        route.append(0)
-                        route_cost += cost_matrix[current_station, 0]
+                        route.append(int(source))
+                        route_cost += cost_matrix[current_station, int(source)]
                     if vehicle_load != 0:
                         print('Vehicle load should be zero when the route is finished.')
                         print('Current vehicle load:', vehicle_load)
-                        # raise ValueError('Vehicle load should be zero when the route is finished.')
+                        raise ValueError('Vehicle load should be zero when the route is finished.')
                         # TODO For some reason, it is possible that load at the end of the route is not zero.
                     break
 
@@ -363,7 +359,6 @@ class VNS(object):
         self.routes = routes
 
         return self.routes
-
 
     def greedy_routing_PILOT(self):
         """

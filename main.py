@@ -33,15 +33,15 @@ if __name__ == '__main__':
 
     ##___________________________________________________________________ VARIABLE NEIGHBOURHOOD SEARCH APPROACH
     # Load graph
-    graph, node_info = load_graph('sample_graph_01_edited')
+    graph, node_info = load_graph('sample_graph_04_edited')
     # graph, node_info = load_graph('sample_graph_03')
 
     # Load solver
-    vns = VNS(graph, num_vehicles=2, vehicle_capacity=1, verbose=1)
+    vns = VNS(graph, num_vehicles=10, vehicle_capacity=20, verbose=1)
     start2 = time.time()
 
     routes_initial = vns.greedy_routing_v3(budget=100000)
-    visualize_routes(routes_initial, node_info)
+    # visualize_routes(routes_initial, node_info)
     vns.calculate_loading_MF()
     vns.display_results()
     # vns.remove_unused_stops()
