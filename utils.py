@@ -3,6 +3,7 @@ import networkx as nx
 import pickle
 import numpy as np
 import random
+import plotly.graph_objects as go
 from os.path import exists
 
 class bcolors:
@@ -33,6 +34,7 @@ def display_graph(Graph, node_pos=None, edge_list=None, title=None):
 
 def visualize_routes(routes, node_data):
     station_color = 'blue'
+    random.seed(0)
     get_colors = lambda n: ["#%06x" % random.randint(0, 0xFFFFFF) for _ in range(n)]
     route_color = get_colors(len(routes))
     for i in range(len(node_data)):
@@ -46,10 +48,88 @@ def visualize_routes(routes, node_data):
             current_station = route[j-1]
             x_line = [node_data[str(previous_station)]['pos'][0], node_data[str(current_station)]['pos'][0]]
             y_line = [node_data[str(previous_station)]['pos'][1], node_data[str(current_station)]['pos'][1]]
-            plt.plot(x_line, y_line, color=route_color[route_num])
+            plt.plot(x_line, y_line, color=route_color[route_num], zorder=-1)
     plt.axis('equal')
     plt.show()
 
+def visualize_routes_go(routes, node_data):
+    station_color = 'blue'
+    random.seed(0)
+    get_colors = lambda n: ["#%06x" % random.randint(0, 0xFFFFFF) for _ in range(n)]
+    route_color = get_colors(len(routes))
+
+    x_stations = []
+    y_stations = []
+
+    for i in range(len(node_data)):
+        x_stations.append(node_data[str(i)]['pos'][0])
+        y_stations.append(node_data[str(i)]['pos'][1])
+    x_stations = np.array(x_stations)
+    y_stations = np.array(y_stations)
+
+    # create a plot
+    fig = go.Figure()
+
+    # plot stations
+    fig.add_trace(go.Scattermapbox(
+        mode="markers",
+        lon=x_stations,
+        lat=y_stations,
+        marker={'size': 12,
+                'color': 'black'},
+        name='Stations'))
+
+    routes_buttons = []
+
+    for route_num, route in enumerate(routes):
+        route = list(map(int, route))
+        x_route = []
+        y_route = []
+        for visit, station in enumerate(route):
+            x_route.append(x_stations[station])
+            y_route.append(y_stations[station])
+
+        # routes_buttons.append(dict(
+        #     args=[ {
+        #         'type':'Scattermapbox',
+        #         'mode':'lines',
+        #         'lon':x_route,
+        #         'lat':y_route,
+        #         'marker':{'size': 10},
+        #         'margin': {'l': 0, 't': 0, 'b': 0, 'r': 0},
+        #         'mapbox':{
+        #     'center': {'lon': 10, 'lat': 10},
+        #     'style': "stamen-terrain",
+        #     'center': {'lon': -20, 'lat': -20},
+        #     'zoom': 1}
+        #     }],
+        #
+        #     label='Route #' + str(route_num),
+        #     method='update'))
+
+        fig.add_trace(go.Scattermapbox(
+            mode="lines",
+            lon=x_route,
+            lat=y_route,
+            marker={'size': 10},
+            name='Route #' + str(route_num)))
+
+    fig.update_layout(
+        margin={'l': 0, 't': 0, 'b': 0, 'r': 0},
+        mapbox={
+            'center': {'lon': (max(x_stations) + min(x_stations)) / 2, 'lat': (max(y_stations) + min(y_stations)) / 2},
+            'style': "stamen-terrain",
+            'zoom': 11})
+
+    # fig.update_layout(
+    #     updatemenus=[
+    #         dict(
+    #             # type="buttons",
+    #             buttons=routes_buttons)
+    #     ]
+    # )
+
+    fig.show()
 
 
 
