@@ -154,7 +154,7 @@ class VNS(object):
         return loads
 
 
-    def greedy_routing_v1(self, budget, source='0', varied_starts=None):
+    def greedy_routing_v1(self, source='0', varied_starts=None):
 
         """
         Finds a set of vehicle routes with low cost based on a greedy approach.
@@ -763,7 +763,7 @@ class VNS(object):
                 next = path[r + 1]
                 node_str = "{}-{}-{}".format(node, p, r)
                 next_str = "{}-{}-{}".format(next, p, r + 1)
-                self.instructions[p].append(dict[node_str][next_str])
+                self.instructions[p].append(data[node_str][next_str])
 
         routes_str = "Routes with loading instructions:"
         if self._verbose > 1:
