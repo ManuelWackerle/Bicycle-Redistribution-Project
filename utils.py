@@ -131,8 +131,6 @@ def visualize_routes_go(routes, node_data):
 
     fig.show()
 
-
-
 def nodes_data_as_numpy(graph: nx.Graph, data_str):
     nodes = []
     for n, data in graph.nodes.items():
