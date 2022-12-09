@@ -631,7 +631,7 @@ class VNS(object):
 
         pass #Todo: implement
 
-    def remove_one_station(self):
+    def remove_one_station(self, patience):
         """return remove station neighbor matrix whose each row corresponds to removing one station from the original route
         
         Write 
@@ -643,13 +643,16 @@ class VNS(object):
         :return
             (N, Cn, Ln) matrix (python list)
         """
-        retval = [
-            [
-                self.routes[:j] + self.routes[j+1:]  # remove j-th station from list
-                for j in range(len(self.routes[i]))
-            ]
-            for i in range(len(self.routes))
-        ]
+        retval = []
+        p = 0
+        for i in range(len(self.routes)):
+            for j in range(len(self.routes[i])):
+                candidate = deepcopy(self.routes)
+                candidate[i] = candidate[i][:j] + candidate[i][j+1:]
+                retval.append(candidate)
+                p += 1
+                if p > patience:
+                    break
         return retval
 
     def _get_rebalanced_graph(self):
@@ -665,27 +668,31 @@ class VNS(object):
                 graph.nodes[self.routes[l][s]]['sup'] += diff
         return graph
 
-    def insert_unbalanced_station(self):
+    def insert_unbalanced_station(self, patience):
         """adding unbalanced station is considered as the neighbor
 
         Write
             N = Number of trucks (=len(self.routes))
-            Cn = Number of candidate routes (=len(self.routes[n])*len(unbalanced_stations))
+            C = Number of candidate routes (=len(self.routes[n])*len(unbalanced_stations))
             Ln = Route length (=len(self.routes[n])+1)
         Note
             Cn, Ln depends on n in N. (candidate routes and route length might differ for each truck)
         :return
-            (N, Cn, Ln) matrix (python list)
+            (C, N, Ln) matrix (python list)
         """
         graph = self._get_rebalanced_graph()
         unbalanced_stations = [x for x in graph.nodes if  graph.nodes[x]['sup'] != 0]
-        retval = [
-            [
-                route[:j] + [u] + route[j:]  # insert unbalanced station to j-th position
-                for u in unbalanced_stations
-                for j in range(1, len(route))
-            ] for route in self.routes
-        ]
+        retval = []
+        p = 0
+        for i in range(len(self.routes)):
+            for j in range(1, len(self.routes[i])-1):
+                for u in unbalanced_stations:
+                    candidate = deepcopy(self.routes)
+                    candidate[i] = candidate[i][:j] + [u] + candidate[i][j:]
+                    retval.append(candidate)
+                    p += 1
+                    if p > patience:
+                        break
         return retval
 
     def calculate_loading_MF(self, start_load=0, source='0'):
