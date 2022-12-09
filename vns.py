@@ -5,7 +5,7 @@ import numpy as np
 from copy import deepcopy
 import utils
 from utils import bcolors
-
+import time
 
 class VNS(object):
     """
@@ -40,7 +40,10 @@ class VNS(object):
         self.instructions = []
         self.distances = []
 
-
+        # G.
+        self.neighbourhoods = []  # keys of neighbourhoods to be searched.
+        self.nh_dict = {"remove_station": self.remove_one_station}  # functions associated to neighbourhoods
+        self.current_nh = 0
 
 
     def show_header(self, header_str):
@@ -335,7 +338,7 @@ class VNS(object):
         self.show_header("Searching for routes using tsp segmenting")
         graph = self.model.copy()
         path = nx.algorithms.approximation.christofides(graph, weight='dist')
-        print(path)
+        # print(path)
         path_len = len(path) - 1
         s_idx = path.index(source)
         e_idx = (s_idx - 1) % path_len
@@ -379,13 +382,13 @@ class VNS(object):
         for s in range(len(seq)-1):
             dist += tsp_graph.edges[seq[s], seq[s+1]]['dist']
             self.routes[0] += segments[seq[s]][2]
-            print(segments[seq[s]][2])
-        print(dist)
+            # print(segments[seq[s]][2])
+        # print(dist)
         self.routes[0] += source
         self.recalculate_distance()
 
 
-    def tsp(self):
+    def tsp_rerouting(self):
         for l in range(self.num_vehicles):
             subgraph = self.model.subgraph(self.routes[l])
             graph = subgraph.to_undirected()
@@ -631,7 +634,7 @@ class VNS(object):
 
         pass #Todo: implement
 
-    def remove_one_station(self):
+    def remove_one_station(self, patience):
         """return remove station neighbor matrix whose each row corresponds to removing one station from the original route
         
         Write 
@@ -643,13 +646,18 @@ class VNS(object):
         :return
             (N, Cn, Ln) matrix (python list)
         """
-        retval = [
-            [
-                self.routes[:j] + self.routes[j+1:]  # remove j-th station from list
-                for j in range(len(self.routes[i]))
-            ]
-            for i in range(len(self.routes))
-        ]
+        retval = []
+        p = 0
+        for i in range(len(self.routes)):
+            if self.routes[i] == 1:
+                continue
+            for j in range(1, len(self.routes[i])-1):
+                candidate = deepcopy(self.routes)
+                candidate[i] = candidate[i][:j] + candidate[i][j+1:]
+                retval.append(candidate)
+                p += 1
+                if p > patience:
+                    break
         return retval
 
     def _get_rebalanced_graph(self):
@@ -665,27 +673,31 @@ class VNS(object):
                 graph.nodes[self.routes[l][s]]['sup'] += diff
         return graph
 
-    def insert_unbalanced_station(self):
+    def insert_unbalanced_station(self, patience):
         """adding unbalanced station is considered as the neighbor
 
         Write
             N = Number of trucks (=len(self.routes))
-            Cn = Number of candidate routes (=len(self.routes[n])*len(unbalanced_stations))
+            C = Number of candidate routes (=len(self.routes[n])*len(unbalanced_stations))
             Ln = Route length (=len(self.routes[n])+1)
         Note
             Cn, Ln depends on n in N. (candidate routes and route length might differ for each truck)
         :return
-            (N, Cn, Ln) matrix (python list)
+            (C, N, Ln) matrix (python list)
         """
         graph = self._get_rebalanced_graph()
         unbalanced_stations = [x for x in graph.nodes if  graph.nodes[x]['sup'] != 0]
-        retval = [
-            [
-                route[:j] + [u] + route[j:]  # insert unbalanced station to j-th position
-                for u in unbalanced_stations
-                for j in range(1, len(route))
-            ] for route in self.routes
-        ]
+        retval = []
+        p = 0
+        for i in range(len(self.routes)):
+            for j in range(1, len(self.routes[i])-1):
+                for u in unbalanced_stations:
+                    candidate = deepcopy(self.routes)
+                    candidate[i] = candidate[i][:j] + [u] + candidate[i][j:]
+                    retval.append(candidate)
+                    p += 1
+                    if p > patience:
+                        break
         return retval
 
     def calculate_loading_MF(self, start_load=0, source='0'):
@@ -785,10 +797,12 @@ class VNS(object):
 
     def two_opt(self, routes):
         new_routes = []
+        # collection = [routes]
         for l in range(len(routes)):
             new_routes.append([])
             route = routes[l]
-            best, b1, b2 = 0, None, None
+            b1, b2 = None, None
+            best, value, new_value = 0, 0, 0
             for s1 in range(1, len(route)-4):
                 ri, rj = route[s1], route[s1 + 1]
                 for s2 in range(s1 + 2, len(route)-2):
@@ -796,15 +810,17 @@ class VNS(object):
                     if s2 < s1 - 1 or  s1 + 1 < s2:
                         if ri != rk and ri != rl and rj != rk and rj != rl:
                             value = self.model.edges[ri, rj]['dist'] + self.model.edges[rk, rl]['dist']
-                            switch = self.model.edges[ri, rk]['dist'] + self.model.edges[rl, rj]['dist']
-                        if value - switch > best:
-                            best = value - switch
+                            new_value = self.model.edges[ri, rk]['dist'] + self.model.edges[rl, rj]['dist']
+                        if value - new_value > best:
+                            best = value - new_value
                             b1, b2 = s1, s2
             if b1 is not None:
                 new_routes[l] = route[:b1+1] + route[b2:b1:-1] + route[b2+1:]
             else:
                 self.show_warning("no 2-opt improvement found for vehicle #{}".format(l))
-        return new_routes
+                new_routes[l] = routes[l]
+        collection = [new_routes]
+        return collection
 
 
     def set_routes(self, routes, instr=None):
@@ -898,3 +914,113 @@ class VNS(object):
         self.instructions = []
         self.distances = []
         self.allocated = 0
+
+    """
+    Implementation of the Variable Neighbourhood Search for the Vehicle routing problem.
+    Basic idea:
+    0 Initialization:
+        0.1 Generate initial feasible solution and compute the objective value.
+        0.2 Set solution as current best.
+        0.3 Choose list of neighbourhoods to explore in a specific order.
+            Ns for shaking, Nk for local search.
+
+    Set s = 1
+        1 Shaking:
+            1.1 Randomly create a solution in the sth neighbourhood of current best.
+            1.2 Set k = 1
+                    1.2.1 Explore the kth NH.
+
+    set_neighbourhoods. Sets the neighbourhoods to be used.
+    """
+    def set_neighbourhoods(self, neighbourhood_keys):
+        self.neighbourhoods = neighbourhood_keys
+        self.current_nh = 0
+
+    """
+    _shake : Generates a solution inside the given neighbourhood.
+    INPUT
+        nh: the neighbourhood in which we want to produce a new route as a function that takes a route and return the shake.
+
+    OUTPUT
+        return: Set of routes produced from the original route that lies in the neighbourhood specified by _nh_type
+    """
+
+    def _shake(self, nh):
+
+        routes_in_neighbourhood = self.nh_dict[self.neighbourhoods[nh]](patience = 5)
+
+        return routes_in_neighbourhood
+
+    """
+    _best_improvement: Local search in neighbourhood. Create a copy with modified routes and compare maximum flow
+    INPUT
+        routes_in_nh: list of all routes to be searched
+    OUTPUT
+        solution_best_local: best feasible solution found inside the neighbourhood
+    """
+
+    def _best_improvement(self, routes_in_nh):
+        print("Trying to improve\n")
+        index_best = 0
+        # TODO: Need to create a copy of vns with the modified route to compare. How?
+        instance_2_explore = VNS(self.model, self.num_vehicles, self.capacity, self._verbose)
+
+        for index_current in range(len(routes_in_nh)):
+            instance_2_explore.routes = routes_in_nh[index_current]
+            self.calculate_loading_MF()
+            instance_2_explore.calculate_loading_MF()
+            if sum(self.distances) < sum(instance_2_explore.distances) :
+                index_best = index_current
+            print(index_current, index_best)
+
+        return index_best
+
+    """
+    _nh_change: Controls what neighbourhood is searched. When the solution in the nh is better than the current best, we 
+                update the solution and restart from first nh. Else, we move to the next nh.
+    REMARK
+        The order in which the neighbourhoods are searched is important, but fixed. So given the order, we always explore 
+        the one immediately after.  
+    INPUTS
+        solution_current: current minimization value.
+        solution_nh: solution found in nh.
+        nh_num: neighbourhood number that we are searching
+
+    OUTPUTS
+        return: best solution and new neighbourhood to search
+    """
+
+    def _nh_change(self, imbalance_current):
+
+        if self.imbalance < imbalance_current:
+            self.current_nh = 1
+        else:
+            self.current_nh = self.current_nh + 1
+
+    """
+    gvns : Implementation of General Variable Neighbourhood Search.
+        solution_initial: Tour produced by greedy algorithms.
+        timeout: Maximum allowed execution time
+        nhs: ordered list of neighbourhoods to explore  
+    """
+
+    # noinspection SpellCheckingInspection
+    def gvns(self, timeout):
+
+        timeout_start = time.time()
+        while time.time() < timeout_start + timeout:
+            # Start search from first nh.
+            nh_current = 0
+            while nh_current <= len(self.neighbourhoods):
+                # Neighbourhood shaking
+                routes_to_explore = self._shake(nh_current)
+
+                # Local search. We find the best route in the neighbourhood
+                best_route_in_nh = self._best_improvement( routes_to_explore )
+
+                # TODO: Check for feasibility of best route.
+                # Update current route
+                self.routes = routes_to_explore[best_route_in_nh]
+
+                # Neighbourhood change
+                #self._nh_change()
