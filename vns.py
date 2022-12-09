@@ -5,7 +5,7 @@ import numpy as np
 from copy import deepcopy
 import utils
 from utils import bcolors
-
+import time
 
 class VNS(object):
     """
@@ -40,7 +40,10 @@ class VNS(object):
         self.instructions = []
         self.distances = []
 
-
+        # G.
+        self.neighbourhoods = []  # keys of neighbourhoods to be searched.
+        self.nh_dict = {"remove_station": self.remove_one_station}  # functions associated to neighbourhoods
+        self.current_nh = 0
 
 
     def show_header(self, header_str):
@@ -646,7 +649,9 @@ class VNS(object):
         retval = []
         p = 0
         for i in range(len(self.routes)):
-            for j in range(len(self.routes[i])):
+            if self.routes[i] == 1:
+                continue
+            for j in range(1, len(self.routes[i])-1):
                 candidate = deepcopy(self.routes)
                 candidate[i] = candidate[i][:j] + candidate[i][j+1:]
                 retval.append(candidate)
@@ -909,3 +914,113 @@ class VNS(object):
         self.instructions = []
         self.distances = []
         self.allocated = 0
+
+    """
+    Implementation of the Variable Neighbourhood Search for the Vehicle routing problem.
+    Basic idea:
+    0 Initialization:
+        0.1 Generate initial feasible solution and compute the objective value.
+        0.2 Set solution as current best.
+        0.3 Choose list of neighbourhoods to explore in a specific order.
+            Ns for shaking, Nk for local search.
+
+    Set s = 1
+        1 Shaking:
+            1.1 Randomly create a solution in the sth neighbourhood of current best.
+            1.2 Set k = 1
+                    1.2.1 Explore the kth NH.
+
+    set_neighbourhoods. Sets the neighbourhoods to be used.
+    """
+    def set_neighbourhoods(self, neighbourhood_keys):
+        self.neighbourhoods = neighbourhood_keys
+        self.current_nh = 0
+
+    """
+    _shake : Generates a solution inside the given neighbourhood.
+    INPUT
+        nh: the neighbourhood in which we want to produce a new route as a function that takes a route and return the shake.
+
+    OUTPUT
+        return: Set of routes produced from the original route that lies in the neighbourhood specified by _nh_type
+    """
+
+    def _shake(self, nh):
+
+        routes_in_neighbourhood = self.nh_dict[self.neighbourhoods[nh]](patience = 5)
+
+        return routes_in_neighbourhood
+
+    """
+    _best_improvement: Local search in neighbourhood. Create a copy with modified routes and compare maximum flow
+    INPUT
+        routes_in_nh: list of all routes to be searched
+    OUTPUT
+        solution_best_local: best feasible solution found inside the neighbourhood
+    """
+
+    def _best_improvement(self, routes_in_nh):
+        print("Trying to improve\n")
+        index_best = 0
+        # TODO: Need to create a copy of vns with the modified route to compare. How?
+        instance_2_explore = VNS(self.model, self.num_vehicles, self.capacity, self._verbose)
+
+        for index_current in range(len(routes_in_nh)):
+            instance_2_explore.routes = routes_in_nh[index_current]
+            self.calculate_loading_MF()
+            instance_2_explore.calculate_loading_MF()
+            if sum(self.distances) < sum(instance_2_explore.distances) :
+                index_best = index_current
+            print(index_current, index_best)
+
+        return index_best
+
+    """
+    _nh_change: Controls what neighbourhood is searched. When the solution in the nh is better than the current best, we 
+                update the solution and restart from first nh. Else, we move to the next nh.
+    REMARK
+        The order in which the neighbourhoods are searched is important, but fixed. So given the order, we always explore 
+        the one immediately after.  
+    INPUTS
+        solution_current: current minimization value.
+        solution_nh: solution found in nh.
+        nh_num: neighbourhood number that we are searching
+
+    OUTPUTS
+        return: best solution and new neighbourhood to search
+    """
+
+    def _nh_change(self, imbalance_current):
+
+        if self.imbalance < imbalance_current:
+            self.current_nh = 1
+        else:
+            self.current_nh = self.current_nh + 1
+
+    """
+    gvns : Implementation of General Variable Neighbourhood Search.
+        solution_initial: Tour produced by greedy algorithms.
+        timeout: Maximum allowed execution time
+        nhs: ordered list of neighbourhoods to explore  
+    """
+
+    # noinspection SpellCheckingInspection
+    def gvns(self, timeout):
+
+        timeout_start = time.time()
+        while time.time() < timeout_start + timeout:
+            # Start search from first nh.
+            nh_current = 0
+            while nh_current <= len(self.neighbourhoods):
+                # Neighbourhood shaking
+                routes_to_explore = self._shake(nh_current)
+
+                # Local search. We find the best route in the neighbourhood
+                best_route_in_nh = self._best_improvement( routes_to_explore )
+
+                # TODO: Check for feasibility of best route.
+                # Update current route
+                self.routes = routes_to_explore[best_route_in_nh]
+
+                # Neighbourhood change
+                #self._nh_change()
