@@ -335,7 +335,7 @@ class VNS(object):
         self.show_header("Searching for routes using tsp segmenting")
         graph = self.model.copy()
         path = nx.algorithms.approximation.christofides(graph, weight='dist')
-        print(path)
+        # print(path)
         path_len = len(path) - 1
         s_idx = path.index(source)
         e_idx = (s_idx - 1) % path_len
@@ -379,13 +379,13 @@ class VNS(object):
         for s in range(len(seq)-1):
             dist += tsp_graph.edges[seq[s], seq[s+1]]['dist']
             self.routes[0] += segments[seq[s]][2]
-            print(segments[seq[s]][2])
-        print(dist)
+            # print(segments[seq[s]][2])
+        # print(dist)
         self.routes[0] += source
         self.recalculate_distance()
 
 
-    def tsp(self):
+    def tsp_rerouting(self):
         for l in range(self.num_vehicles):
             subgraph = self.model.subgraph(self.routes[l])
             graph = subgraph.to_undirected()
@@ -785,10 +785,12 @@ class VNS(object):
 
     def two_opt(self, routes):
         new_routes = []
+        # collection = [routes]
         for l in range(len(routes)):
             new_routes.append([])
             route = routes[l]
-            best, b1, b2 = 0, None, None
+            b1, b2 = None, None
+            best, value, new_value = 0, 0, 0
             for s1 in range(1, len(route)-4):
                 ri, rj = route[s1], route[s1 + 1]
                 for s2 in range(s1 + 2, len(route)-2):
@@ -796,15 +798,17 @@ class VNS(object):
                     if s2 < s1 - 1 or  s1 + 1 < s2:
                         if ri != rk and ri != rl and rj != rk and rj != rl:
                             value = self.model.edges[ri, rj]['dist'] + self.model.edges[rk, rl]['dist']
-                            switch = self.model.edges[ri, rk]['dist'] + self.model.edges[rl, rj]['dist']
-                        if value - switch > best:
-                            best = value - switch
+                            new_value = self.model.edges[ri, rk]['dist'] + self.model.edges[rl, rj]['dist']
+                        if value - new_value > best:
+                            best = value - new_value
                             b1, b2 = s1, s2
             if b1 is not None:
                 new_routes[l] = route[:b1+1] + route[b2:b1:-1] + route[b2+1:]
             else:
                 self.show_warning("no 2-opt improvement found for vehicle #{}".format(l))
-        return new_routes
+                new_routes[l] = routes[l]
+        collection = [new_routes]
+        return collection
 
 
     def set_routes(self, routes, instr=None):
