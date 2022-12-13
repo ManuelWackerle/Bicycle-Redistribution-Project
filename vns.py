@@ -7,6 +7,7 @@ import utils
 from utils import bcolors
 import time
 
+
 class VNS(object):
     """
     Provides the basic version of the algorithms from the paper Balancing Bicycle Sharing Systems:
@@ -21,21 +22,21 @@ class VNS(object):
     def __init__(self, input_graph: nx.Graph, num_vehicles, vehicle_capacity, node_data=None, verbose=0):
         self._verbose = verbose
 
-        #input variables
+        # input variables
         self.model = input_graph
         self.node_data = node_data
         self.num_vehicles = num_vehicles
         self.capacity = vehicle_capacity
 
-        #tracking variables
+        # tracking variables
         self.total_source = 0
         self.total_sink = 0
-
         self.imbalance = 0
         self.allocated = 0
         self._initialize_tracking_variables(input_graph)
+        self.mf_graph = None
 
-        #result variables
+        # result variables
         self.routes = []
         self.instructions = []
         self.distances = []
@@ -44,7 +45,6 @@ class VNS(object):
         self.neighbourhoods = []  # keys of neighbourhoods to be searched.
         self.nh_dict = {"remove_station": self.remove_one_station}  # functions associated to neighbourhoods
         self.current_nh = 0
-
 
     def show_header(self, header_str):
         if self._verbose > 1:
@@ -57,7 +57,6 @@ class VNS(object):
     def show_warning(self, warn_string):
         if self._verbose > 0:
             print(bcolors.WARNING + "Warning: " + warn_string + bcolors.ENDC)
-
 
     def _initialize_tracking_variables(self, input_graph: nx.Graph):
         """
@@ -76,11 +75,9 @@ class VNS(object):
             pass
             # TODO: handle case where sink & source don't match, e.g. by adding an additional node to the graph or changing depot value
 
-
     def mean_distance(self):
         distances = utils.edge_data_as_numpy(self.model, 'dist')
         return distances.mean()
-
 
     def centre_node(self):
         """
@@ -122,7 +119,6 @@ class VNS(object):
             furthest_nodes.append(best)
         return furthest_nodes
 
-
     def recenter_routes(self, source='0'):
         """
         Given a set of routes with arbitrary, different source nodes inserts the new source node if necessary
@@ -138,8 +134,8 @@ class VNS(object):
             split = 0
             if source not in route:
                 best, load = math.inf, 0
-                for s in range(len(route)-1):
-                    dist = self.model.edges[source, route[s]]['dist'] + self.model.edges[source, route[s+1]]['dist']
+                for s in range(len(route) - 1):
+                    dist = self.model.edges[source, route[s]]['dist'] + self.model.edges[source, route[s + 1]]['dist']
                     if dist < best:
                         best = dist
                         split = s
@@ -156,8 +152,7 @@ class VNS(object):
         self.recalculate_distance()
         return loads
 
-
-    def greedy_routing_v1(self, source='0', varied_starts=None):
+    def greedy_routing_v1(self, source='0', varied_starts=None, a=3):
 
         """
         Finds a set of vehicle routes with low cost based on a greedy approach.
@@ -178,12 +173,12 @@ class VNS(object):
         self.instructions = []
         for l in range(self.num_vehicles):
             vehicles.append(l)
-            distances.append(0) #total route distance
+            distances.append(0)  # total route distance
             if varied:
                 start = varied_starts[l]
                 self.routes.append([start])
                 current.append(varied_starts[l])
-                loads.append(min(self.model.nodes[start]['sup'],self.capacity))
+                loads.append(min(self.model.nodes[start]['sup'], self.capacity))
                 self.instructions.append([loads[l]])
                 space.append(self.capacity - loads[l])
                 graph.nodes[start]['sup'] -= loads[l]
@@ -208,10 +203,10 @@ class VNS(object):
                         sup = graph.nodes[n]['sup']
                         if sup > 0:
                             move = -min(sup, space[l])
-                            score = -move * (mean / dist) ** 3
+                            score = -move * (mean / dist) ** a
                         elif sup < 0:
                             move = min(-sup, loads[l])
-                            score = move * (mean / dist) ** 3
+                            score = move * (mean / dist) ** a
                         if score >= next_score:
                             next, next_score, to_move = n, score, move
                 if to_move != 0:
@@ -239,8 +234,7 @@ class VNS(object):
         self.show_info(routes_str)
         return self.routes
 
-
-    def greedy_routing_v2(self, source='0'):
+    def greedy_routing_v2(self, source='0', a=3):
         """
         Finds a set of vehicle routes with low cost based on a greedy approach.
         Version 1: more advanced greedy search taking load balances into account
@@ -265,8 +259,8 @@ class VNS(object):
             space.append(self.capacity)  # remaining space on vehicle
             self.instructions.append([loads[l]])
 
-        for i in range(1, len(guided)-2):
-            s, n = guided[i], guided[i+1]
+        for i in range(1, len(guided) - 2):
+            s, n = guided[i], guided[i + 1]
             if s in successors:
                 successors[s].add(n)
             else:
@@ -298,12 +292,12 @@ class VNS(object):
                         sup = graph.nodes[n]['sup']
                         if sup > 0:
                             move = -min(sup, space[l])
-                            score = -move * (mean / dist) ** 3
+                            score = -move * (mean / dist) ** a
                         elif sup < 0:
                             move = min(-sup, loads[l])
-                            score = move * (mean / dist) ** 3
+                            score = move * (mean / dist) ** a
                         if curr in successors and n in successors[curr]:
-                            score *= 2
+                            score *= 5
                         if score >= next_score:
                             next, next_score, to_move = n, score, move
                 if to_move != 0:
@@ -379,14 +373,13 @@ class VNS(object):
         seq = nx.algorithms.approximation.greedy_tsp(tsp_graph, weight='dist')
         self.routes = [[]]
         dist = 0
-        for s in range(len(seq)-1):
-            dist += tsp_graph.edges[seq[s], seq[s+1]]['dist']
+        for s in range(len(seq) - 1):
+            dist += tsp_graph.edges[seq[s], seq[s + 1]]['dist']
             self.routes[0] += segments[seq[s]][2]
             # print(segments[seq[s]][2])
         # print(dist)
         self.routes[0] += source
         self.recalculate_distance()
-
 
     def tsp_rerouting(self):
         for l in range(self.num_vehicles):
@@ -401,7 +394,6 @@ class VNS(object):
             # print("New sequence calculated\nold: {}\nnew: {}".format(self.routes[l], new))
             self.routes[l] = new
         self.recalculate_distance()
-
 
     def greedy_routing_v3(self, budget, source='0', DEBUG=False):
 
@@ -503,7 +495,9 @@ class VNS(object):
                                         if deliverable_bikes_array[delivery_station] > 0:
                                             raise ValueError(
                                                 'deliverable_bikes_array value cannot be larger than zero.')
-                                        gain_ratio_delivery[delivery_station] = deliverable_bikes_array[delivery_station] / cost_matrix[target_station_tmp, delivery_station]
+                                        gain_ratio_delivery[delivery_station] = deliverable_bikes_array[
+                                                                                    delivery_station] / cost_matrix[
+                                                                                    target_station_tmp, delivery_station]
 
                             if not (np.any(gain_ratio_delivery)):
                                 # no feasible delivery station was found
@@ -517,7 +511,8 @@ class VNS(object):
                                     break
                                 elif deliverable_bikes < 0:
                                     # gain_ratio[target_station] is positive (pickup)
-                                    bike_delta_array[target_station] = min(-deliverable_bikes-vehicle_load, bike_delta)
+                                    bike_delta_array[target_station] = min(-deliverable_bikes - vehicle_load,
+                                                                           bike_delta)
                                     gain_ratio[target_station] = bike_delta_array[target_station] / cost_matrix[
                                         current_station, target_station]
                                     break
@@ -632,12 +627,12 @@ class VNS(object):
         :return routes: the set vehicle routes
         """
 
-        pass #Todo: implement
+        pass  # Todo: implement
 
     def remove_one_station(self, patience):
         """return remove station neighbor matrix whose each row corresponds to removing one station from the original route
-        
-        Write 
+
+        Write
             N = Number of trucks (=len(self.routes))
             Cn = Number of candidate routes (=len(self.routes[n]))
             Ln = Route length (=len(self.routes[n])-1)
@@ -651,9 +646,9 @@ class VNS(object):
         for i in range(len(self.routes)):
             if self.routes[i] == 1:
                 continue
-            for j in range(1, len(self.routes[i])-1):
+            for j in range(1, len(self.routes[i]) - 1):
                 candidate = deepcopy(self.routes)
-                candidate[i] = candidate[i][:j] + candidate[i][j+1:]
+                candidate[i] = candidate[i][:j] + candidate[i][j + 1:]
                 retval.append(candidate)
                 p += 1
                 if p > patience:
@@ -686,11 +681,11 @@ class VNS(object):
             (C, N, Ln) matrix (python list)
         """
         graph = self._get_rebalanced_graph()
-        unbalanced_stations = [x for x in graph.nodes if  graph.nodes[x]['sup'] != 0]
+        unbalanced_stations = [x for x in graph.nodes if graph.nodes[x]['sup'] != 0]
         retval = []
         p = 0
         for i in range(len(self.routes)):
-            for j in range(1, len(self.routes[i])-1):
+            for j in range(1, len(self.routes[i]) - 1):
                 for u in unbalanced_stations:
                     candidate = deepcopy(self.routes)
                     candidate[i] = candidate[i][:j] + [u] + candidate[i][j:]
@@ -754,14 +749,14 @@ class VNS(object):
             self.show_warning("mismatch in source and sink flow capacity, no exact solution can exist.")
             self.imbalance = -1
 
-        #This is where the magic happens
-        value, data = nx.maximum_flow(mf_graph, 's', 't') #, flow_func=nx.algorithms.flow.shortest_augmenting_path) #TODO: investigate this algorithm exactly and see if it can be done better
+        # This is where the magic happens
+        value, data = nx.maximum_flow(mf_graph, 's', 't')  # , flow_func=nx.algorithms.flow.shortest_augmenting_path) #TODO: investigate this algorithm exactly and see if it can be done better
         self.allocated = value - start_load
 
         if value != total_source or value != total_sink:
             self.show_warning(
                 "Bikes can not be allocated to full capacity. Source flow: {s}, Sink flow: {t}, Allocated: {a}"
-                .format(s=total_source, t=total_sink, a=value))
+                    .format(s=total_source, t=total_sink, a=value))
         else:
             self.show_info("Bike allocation is exact. Total allocated bicycles: {}".format(value))
 
@@ -784,6 +779,87 @@ class VNS(object):
                     .format(r, self.instructions[r])
         self.show_info(routes_str)
 
+    def verify_loading_setup(self, source='0'):
+        # Generate Max Flow graph
+        total_source, total_sink = 0, 0
+        mf_graph = nx.DiGraph()
+        mf_graph.add_node('s')  # source node
+        mf_graph.add_node('t')  # sink node
+        for v, d in self.model.nodes(data='sup'):
+            if d > 0:
+                total_source += d
+                mf_graph.add_edge('s', v, capacity=d)
+            elif d < 0:
+                total_sink -= d
+                mf_graph.add_edge(v, 't', capacity=-d)
+        self.imbalance = total_source
+
+        for p in range(len(self.routes)):
+            path = self.routes[p]
+            prev_node = 0
+            for r in range(len(path)):
+                node = path[r]
+                node_str = "{}-{}-{}".format(node, p, r)
+                demand = self.model.nodes[node]['sup']
+                if demand > 0:
+                    mf_graph.add_edge(node, node_str)
+                elif demand < 0:
+                    mf_graph.add_edge(node_str, node)
+                if prev_node != 0:
+                    mf_graph.add_edge(prev_node, node_str, capacity=self.capacity)
+                prev_node = node_str
+        self.mf_graph = mf_graph
+
+    def verify_loading_on_route(self, l1, l2, b1, b2, tolerance=0):
+        intra = l1 == l2
+        ri, rj = self.routes[l1][b1], self.routes[l1][b1 + 1]
+        rk, rl = self.routes[l2][b2], self.routes[l2][b2 + 1]
+        ri_str, rj_str = "{}-{}-{}".format(ri, l1, b1), "{}-{}-{}".format(rj, l1, b1 + 1)
+        rk_str, rl_str = "{}-{}-{}".format(rk, l2, b2), "{}-{}-{}".format(rl, l2, b2 + 1)
+        self.mf_graph.remove_edge(ri_str, rj_str)
+        self.mf_graph.remove_edge(rk_str, rl_str)
+        if intra:
+            self.mf_graph.add_edge(ri_str, rk_str, capacity=self.capacity)
+            self.mf_graph.add_edge(rj_str, rl_str, capacity=self.capacity)
+        else:
+            self.mf_graph.add_edge(ri_str, rl_str, capacity=self.capacity)
+            self.mf_graph.add_edge(rj_str, rk_str, capacity=self.capacity)
+
+        path = self.routes[l1]
+        if intra: #intra-route case we flip direction between switches
+            prev_node = "{}-{}-{}".format(path[b1 + 1], l1, b1 + 1)
+            for m in range(b1 + 2, b2 + 1):
+                node = path[m]
+                node_str = "{}-{}-{}".format(node, l1, m)
+                self.mf_graph.remove_edge(prev_node, node_str)
+                self.mf_graph.add_edge(node_str, prev_node, capacity=self.capacity)
+                prev_node = node_str
+
+
+        # Sovle Max Flow Problem
+        value, data = nx.maximum_flow(self.mf_graph, 's', 't')
+        self.allocated = value
+
+        if self.allocated < self.imbalance - tolerance:
+            #if tolerance not met, undo changes in flow model so that it can be reused
+            if intra:
+                self.mf_graph.remove_edge(ri_str, rk_str)
+                self.mf_graph.remove_edge(rj_str, rl_str)
+            else:
+                self.mf_graph.remove_edge(ri_str, rl_str)
+                self.mf_graph.remove_edge(rj_str, rk_str)
+            self.mf_graph.add_edge(ri_str, rj_str, capacity=self.capacity)
+            self.mf_graph.add_edge(rk_str, rl_str, capacity=self.capacity)
+            if intra:
+                prev_node = "{}-{}-{}".format(path[b1 + 1], l1, b1 + 1)
+                for m in range(b1 + 2, b2 + 1):
+                    node = path[m]
+                    node_str = "{}-{}-{}".format(node, l1, m)
+                    self.mf_graph.remove_edge(node_str, prev_node)
+                    self.mf_graph.add_edge(prev_node, node_str, capacity=self.capacity)
+                    prev_node = node_str
+
+
     def calculate_loading_LP(self, w):
         """
         Given a set of vehicle routes, calculates optimal loading instructions for each route using a Linear Program computation.
@@ -794,34 +870,100 @@ class VNS(object):
         """
         pass
 
-
-    def two_opt(self, routes):
-        new_routes = []
-        # collection = [routes]
-        for l in range(len(routes)):
-            new_routes.append([])
-            route = routes[l]
-            b1, b2 = None, None
-            best, value, new_value = 0, 0, 0
-            for s1 in range(1, len(route)-4):
+    def intra_two_opt(self, tolerance=0):
+        swaps = []
+        for l in range(len(self.routes)):
+            swaps.append([])
+            route = self.routes[l]
+            b1, b2 = 0, 0
+            for s1 in range(1, len(route) - 4):
                 ri, rj = route[s1], route[s1 + 1]
-                for s2 in range(s1 + 2, len(route)-2):
+                best, value, new_value = 0, 0, 0
+                for s2 in range(s1 + 2, len(route) - 2):
                     rk, rl = route[s2], route[s2 + 1]
-                    if s2 < s1 - 1 or  s1 + 1 < s2:
+                    if ri != rk and ri != rl and rj != rk and rj != rl:
+                        value = self.model.edges[ri, rj]['dist'] + self.model.edges[rk, rl]['dist']
+                        new_value = self.model.edges[ri, rk]['dist'] + self.model.edges[rj, rl]['dist']
+                        diff = value - new_value
+                        if diff > best:
+                            best = diff
+                            b1, b2 = s1, s2
+
+                if best > 0:
+                    swaps[l].append([best, b1, b2])
+
+        for l in range(self.num_vehicles):
+            swaps[l].sort(reverse=True)
+            mn, mx = len(self.routes[l]) + 1, -1
+            route = deepcopy(self.routes[l])
+            for s in range(len(swaps[l])):
+                _, b1, b2 = swaps[l][s]
+                if b2 < mn - 1 or mx + 1 < b1:
+                    self.verify_loading_on_route(l, l, b1, b2, tolerance)
+                    if self.allocated >= self.imbalance - tolerance:
+                        self.routes[l] = route[:b1 + 1] + route[b2:b1:-1] + route[b2 + 1:]
+                        route = deepcopy(self.routes[l])
+                        mn, mx = min(b1, mn), max(b2, mx)
+                    else:
+                        self.routes[l] = route
+        self.recalculate_distance()
+
+    def inter_two_opt(self, tolerance=0):
+        swaps = []
+        clip = 5
+        for l1 in range(len(self.routes)):
+            route1 = self.routes[l1]
+            for l2 in range(l1 + 1, len(self.routes)):
+                route2 = self.routes[l2]
+                r1, r2, b1, b2 = 0, 0, 0, 0
+                best, value, new_value = 0, 0, 0
+                for s1 in range(clip, len(route1) - clip):
+                    ri, rj = route1[s1], route1[s1 + 1]
+                    for s2 in range(s1 - clip, min(s1 + clip, len(route2) - 1)):
+                        rk, rl = route2[s2], route2[s2 + 1]
                         if ri != rk and ri != rl and rj != rk and rj != rl:
                             value = self.model.edges[ri, rj]['dist'] + self.model.edges[rk, rl]['dist']
-                            new_value = self.model.edges[ri, rk]['dist'] + self.model.edges[rl, rj]['dist']
-                        if value - new_value > best:
-                            best = value - new_value
-                            b1, b2 = s1, s2
-            if b1 is not None:
-                new_routes[l] = route[:b1+1] + route[b2:b1:-1] + route[b2+1:]
-            else:
-                self.show_warning("no 2-opt improvement found for vehicle #{}".format(l))
-                new_routes[l] = routes[l]
-        collection = [new_routes]
-        return collection
+                            new_value = self.model.edges[ri, rl]['dist'] + self.model.edges[rk, rj]['dist']
+                            diff = value - new_value
+                            if diff > best:
+                                best = diff
+                                r1, r2, b1, b2 = l1, l2, s1, s2
+                if best > 0:
+                  swaps.append([best, r1, r2, b1, b2])
 
+        swaps.sort(reverse=True)
+        used = set()
+        for s in range(len(swaps)):
+            _, r1, r2, b1, b2 = swaps[s]
+            if r1 not in used and r2 not in used: #Todo, implement index change tracking so that the other swaps can also be used and delete this check
+                route1 = deepcopy(self.routes[r1])
+                route2 = deepcopy(self.routes[r2])
+                self.verify_loading_on_route(r1, r2, b1, b2, tolerance)
+                if self.allocated >= self.imbalance - tolerance:
+                    self.routes[r1] = route1[:b1 + 1] + route2[b2 + 1:]
+                    self.routes[r2] = route2[:b2 + 1] + route1[b1 + 1:]
+                    route1 = deepcopy(self.routes[r1])
+                    route2 = deepcopy(self.routes[r2])
+                    used.add(r1)
+                    used.add(r2)
+                else:
+                    self.routes[r1] = route1
+                    self.routes[r2] = route2
+        self.recalculate_distance()
+
+    def recalculate_distance(self, only_subroute=-1):
+        for l in range(len(self.routes)):
+            if only_subroute == -1 or only_subroute == l:
+                route = self.routes[l]
+                dist = 0
+                prev = route[0]
+                for s in range(1, len(route)):
+                    if prev == route[s]:
+                        self.show_warning("same route twice in sequence - might be a mistake")
+                    else:
+                        dist += self.model.edges[prev, route[s]]['dist']
+                    prev = route[s]
+                self.distances[l] = dist
 
     def set_routes(self, routes, instr=None):
         success = True
@@ -839,6 +981,7 @@ class VNS(object):
                     break
         if success:
             self.routes = routes
+            self.distances = [0] * self.num_vehicles
             self.recalculate_distance()
             if instr is not None:
                 if len(instr) != len(routes):
@@ -867,21 +1010,6 @@ class VNS(object):
                 del self.routes[l][r]
         self.recalculate_distance()
 
-    def recalculate_distance(self):
-        self.distances = []
-        for l in range(len(self.routes)):
-            route = self.routes[l]
-            dist = 0
-            prev = route[0]
-            for s in range(1, len(route)):
-                if prev == route[s]:
-                    self.show_warning("same route twice in sequence - might be a mistake")
-                else:
-                    dist += self.model.edges[prev, route[s]]['dist']
-                prev = route[s]
-            self.distances.append(dist)
-
-
     def display_results(self, show_instructions=True):
         """
         Displays the information in self.routes and self.instructions in a human readable way
@@ -890,7 +1018,7 @@ class VNS(object):
         if show_instructions:
             results += "total distance || instructions   <station>: <load/unload bikes> (<total on vehicle>)"
             for l in range(len(self.routes)):
-                line = "\nVehicle #{:<3} {:>11}km |".format(l, self.distances[l]/1000)
+                line = "\nVehicle #{:<3} {:>11}km |".format(l, self.distances[l] / 1000)
                 prev_load, last = 0, 0
                 for s in range(len(self.instructions[l])):
                     load = self.instructions[l][s]
@@ -901,12 +1029,13 @@ class VNS(object):
                     # dist = self.model.edges[a, b]['dist'] if a != b else 0
                     line += "|{:>3}: ".format(self.routes[l][s]) + instr + "{:<2}({:2})".format(abs(diff), load)
                     last = s
-                results += line + "|{:>3}: ".format(self.routes[l][last+1]) + "u{:<2}( 0)|".format(prev_load)
+                results += line + "|{:>3}: ".format(self.routes[l][last + 1]) + "u{:<2}( 0)|".format(prev_load)
             results += "\n"
-        d = sum(self.distances)/1000
+        d = sum(self.distances) / 1000
         success = bcolors.OKGREEN if self.allocated == self.imbalance else bcolors.FAIL
         results += bcolors.BOLD + bcolors.OKGREEN + "Total Distance:{:9}km".format(d) + bcolors.ENDC + " ||  "
-        results += success + bcolors.BOLD + " Total Rebalanced: {}/{}".format(self.allocated, self.imbalance) + bcolors.ENDC
+        results += success + bcolors.BOLD + " Total Rebalanced: {}/{}".format(self.allocated,
+                                                                              self.imbalance) + bcolors.ENDC
         print(results)
 
     def reset(self):
@@ -932,6 +1061,7 @@ class VNS(object):
 
     set_neighbourhoods. Sets the neighbourhoods to be used.
     """
+
     def set_neighbourhoods(self, neighbourhood_keys):
         self.neighbourhoods = neighbourhood_keys
         self.current_nh = 0
@@ -947,7 +1077,7 @@ class VNS(object):
 
     def _shake(self, nh):
 
-        routes_in_neighbourhood = self.nh_dict[self.neighbourhoods[nh]](patience = 5)
+        routes_in_neighbourhood = self.nh_dict[self.neighbourhoods[nh]](patience=5)
 
         return routes_in_neighbourhood
 
@@ -969,7 +1099,7 @@ class VNS(object):
             instance_2_explore.routes = routes_in_nh[index_current]
             self.calculate_loading_MF()
             instance_2_explore.calculate_loading_MF()
-            if sum(self.distances) < sum(instance_2_explore.distances) :
+            if sum(self.distances) < sum(instance_2_explore.distances):
                 index_best = index_current
             print(index_current, index_best)
 
@@ -1016,11 +1146,11 @@ class VNS(object):
                 routes_to_explore = self._shake(nh_current)
 
                 # Local search. We find the best route in the neighbourhood
-                best_route_in_nh = self._best_improvement( routes_to_explore )
+                best_route_in_nh = self._best_improvement(routes_to_explore)
 
                 # TODO: Check for feasibility of best route.
                 # Update current route
                 self.routes = routes_to_explore[best_route_in_nh]
 
                 # Neighbourhood change
-                #self._nh_change()
+                # self._nh_change()

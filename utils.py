@@ -33,7 +33,7 @@ def display_graph(Graph, node_pos=None, edge_list=None, title=None):
     plt.show()
 
 def visualize_routes(routes, node_data):
-    station_color = 'blue'
+    station_color = 'grey'
     random.seed(0)
     get_colors = lambda n: ["#%06x" % random.randint(0, 0xFFFFFF) for _ in range(n)]
     route_color = get_colors(len(routes))
