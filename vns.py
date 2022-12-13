@@ -951,6 +951,7 @@ class VNS(object):
                     self.routes[r2] = route2
         self.recalculate_distance()
 
+
     def recalculate_distance(self, only_subroute=-1):
         for l in range(len(self.routes)):
             if only_subroute == -1 or only_subroute == l:
