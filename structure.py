@@ -300,7 +300,7 @@ class ProblemInstance:
             results += "total distance || instructions   <station>: <load/unload bikes> (<total on vehicle>)"
             for v in self.vehicles:
                 dist = self.calculate_distance(v)
-                line = "\nVehicle #{:<3} {:>11}km |".format(v.id(), dist/1000)
+                line = "\nVehicle #{:<3} {:>12}km |".format(v.id(), dist/1000)
                 prev_load, last = 0, 0
                 for s in range(len(v.route())-1):
                     load = v.loads()[s]
@@ -315,7 +315,7 @@ class ProblemInstance:
             results += "\n"
         d = self.calculate_distances()/1000
         success = bcolors.OKGREEN if self.allocated == self.imbalance else bcolors.FAIL
-        results += bcolors.BOLD + bcolors.OKGREEN + "Total Distance:{:9}km".format(d) + bcolors.ENDC + " ||  "
+        results += bcolors.BOLD + bcolors.OKGREEN + "Total Distance:{:10}km".format(d) + bcolors.ENDC + " ||  "
         results += success + bcolors.BOLD + " Total Rebalanced: {}/{}".format(self.allocated,
                                                                               self.imbalance) + bcolors.ENDC
         print(results)

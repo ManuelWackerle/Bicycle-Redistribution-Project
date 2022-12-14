@@ -186,11 +186,8 @@ def remove_unused_stops(prob):
     """
     for v in prob.vehicles:
         remove = []
-        node = None
-        distance = 0
         prev_load = 0
         for s in range(1, len(v.route())-1): #ignore first and last stops (source)
-            node = v.route()[s]
             load = v.loads()[s]
             if load == prev_load:
                 remove.append(s)
@@ -198,7 +195,6 @@ def remove_unused_stops(prob):
         remove.reverse()
         for r in remove:
             v.remove_stop(r)
-
 
 def intra_two_opt(prob, tolerance=0):
     swaps = []

@@ -1,11 +1,11 @@
 import networkx as nx
 import math
-from haversine import haversine, Unit
-import numpy as np
-from copy import deepcopy
-import utils
-from utils import bcolors
 import time
+import utils
+import numpy as np
+from haversine import haversine, Unit
+from copy import deepcopy
+from utils import bcolors
 
 
 class VNS(object):
