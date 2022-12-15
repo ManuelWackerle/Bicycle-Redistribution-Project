@@ -196,7 +196,7 @@ def save_object(item, save_as="pickle_file"):
     # if not exists(file_path):
     pickle.dump(item, open(file_path, "wb"))
     # else: #Todo: automatically rename file with incrementing number and save
-    #     raise FileExistsError
+    #     raise Fi/leExistsError
 
 
 def extract_saved_object(file_name):

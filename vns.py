@@ -219,9 +219,11 @@ def intra_two_opt(prob, tolerance=0):
             if best > 0:
                 swaps[l].append([best, b1, b2])
 
+    original_vehicles = deepcopy(prob.vehicles)
     out = []
     for l in range(len(prob.vehicles)):
-        v = deepcopy(prob.vehicles[l])
+        # print(prob.vehicles[l].route())
+        v = prob.vehicles[l]
         out.append(v)
         swaps[l].sort(reverse=True)
         mn, mx = len(v.route()) + 1, -1
@@ -236,12 +238,13 @@ def intra_two_opt(prob, tolerance=0):
                     mn, mx = min(b1, mn), max(b2, mx)
                 else:
                     v.set_route(route)
+    prob.vehicles = original_vehicles
     return out
 
 def inter_two_opt(prob, tolerance=0): #NOT valid for different vehicles capacities
     swaps = []
     clip = 5
-    for l1 in range(len(prob.vehicles)):
+    for l1, v1 in enumerate(prob.vehicles):
         route1 = prob.vehicles[l1].route()
         for l2 in range(l1 + 1, len(prob.vehicles)):
             route2 = prob.vehicles[l2].route()
@@ -264,13 +267,12 @@ def inter_two_opt(prob, tolerance=0): #NOT valid for different vehicles capaciti
     swaps.sort(reverse=True)
     used = set()
     out = []
-    for v in prob.vehicles:
-        out.append(deepcopy(v))
+    original_vehiles = deepcopy(prob.vehicles)
     for s in range(len(swaps)):
         _, r1, r2, b1, b2 = swaps[s]
         if r1 not in used and r2 not in used:
             #Todo, implement index change tracking so that the other swaps can also be used and delete this check
-            v1, v2 = out[r1], out[r2]
+            v1, v2 = prob.vehicles[r1], prob.vehicles[r2]
             route1 = deepcopy(v1.route())
             route2 = deepcopy(v2.route())
             v1.set_route(route1[:b1 + 1] + route2[b2 + 1:])
@@ -284,6 +286,9 @@ def inter_two_opt(prob, tolerance=0): #NOT valid for different vehicles capaciti
             else:
                 v1.set_route(route1)
                 v2.set_route(route2)
+    for v in prob.vehicles:
+        out.append(v)
+    prob.vehicles = original_vehiles
     return out
 
 

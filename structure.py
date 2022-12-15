@@ -183,9 +183,11 @@ class ProblemInstance:
             pass
             # TODO: handle case where sink & source don't match, e.g. by adding an additional node to the graph or changing depot value
 
-    def calculate_distances(self):
+    def calculate_distances(self, vehicles = None):
         total = 0
-        for v in self.vehicles:
+        if vehicles == None:
+            vehicles = self.vehicles
+        for v in vehicles:
             total += self.calculate_distance(v)
         return total
 
@@ -194,7 +196,7 @@ class ProblemInstance:
         prev = vehicle.route()[0]
         for s in range(1, len(vehicle.route())):
             if prev == vehicle.route()[s]:
-                print("Warning: same route twice in sequence - might be a mistake")
+                print("Warning: same route twice in  sequence - might be a mistake")
             else:
                 dist += self.model.edges[prev, vehicle.route()[s]]['dist']
             prev = vehicle.route()[s]
