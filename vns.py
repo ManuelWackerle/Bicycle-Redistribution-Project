@@ -219,8 +219,10 @@ def intra_two_opt(prob, tolerance=0):
             if best > 0:
                 swaps[l].append([best, b1, b2])
 
+    out = []
     for l in range(len(prob.vehicles)):
-        v = prob.vehicles[l]
+        v = deepcopy(prob.vehicles[l])
+        out.append(v)
         swaps[l].sort(reverse=True)
         mn, mx = len(v.route()) + 1, -1
         route = deepcopy(v.route())
@@ -234,8 +236,9 @@ def intra_two_opt(prob, tolerance=0):
                     mn, mx = min(b1, mn), max(b2, mx)
                 else:
                     v.set_route(route)
+    return out
 
-def inter_two_opt(prob, tolerance=0):
+def inter_two_opt(prob, tolerance=0): #NOT valid for different vehicles capacities
     swaps = []
     clip = 5
     for l1 in range(len(prob.vehicles)):
@@ -260,11 +263,14 @@ def inter_two_opt(prob, tolerance=0):
 
     swaps.sort(reverse=True)
     used = set()
+    out = []
+    for v in prob.vehicles:
+        out.append(deepcopy(v))
     for s in range(len(swaps)):
         _, r1, r2, b1, b2 = swaps[s]
         if r1 not in used and r2 not in used:
             #Todo, implement index change tracking so that the other swaps can also be used and delete this check
-            v1, v2 = prob.vehicles[r1], prob.vehicles[r2]
+            v1, v2 = out[r1], out[r2]
             route1 = deepcopy(v1.route())
             route2 = deepcopy(v2.route())
             v1.set_route(route1[:b1 + 1] + route2[b2 + 1:])
@@ -278,6 +284,8 @@ def inter_two_opt(prob, tolerance=0):
             else:
                 v1.set_route(route1)
                 v2.set_route(route2)
+    return out
+
 
 # def do_two_opt(initial_routes: [[]], cost_matrix: [[]], timeout=10) -> [[]]:
 #     """
@@ -402,8 +410,8 @@ as a route in the neighbourhood with lower cost is found, it is set as the curre
 #         nbh = nbh + 1
 #
 #     return nbh, current_routes
-#
-#
+
+
 # def general_variable_nbh_search (current_routes: [[]], ordered_nbhs: [], cost_matrix: [[]], timeout = 10):
 #     """
 #     General VNS with VND
