@@ -1,8 +1,11 @@
 import time
+
+import networkx as nx
+
+import utils
 from load_csv import load_graph
-from mcf import MinimumCostFlow
-from vns import VNS
-from utils import *
+from structure import ProblemInstance, Vehicle
+import vns
 
 """
 Use this file to load, test and run different solution approaches on the data.
@@ -32,26 +35,52 @@ if __name__ == '__main__':
 
 
     ##___________________________________________________________________ VARIABLE NEIGHBOURHOOD SEARCH APPROACH
-    # Load graph
-    graph, node_info = load_graph('sample_graph_02')
-    # graph, node_info = load_graph('sample_graph_03')
+    # Load Problem Instance
+    graph, node_info = load_graph('sample_graph_04')
+    # graph, node_info = load_graph('sample_graph_06')
+    vehicles = []
+    for i in range(5):
+        vehicles.append(Vehicle(capacity=20, vehicle_id=str(i)))
 
-    # Load solver
-    vns = VNS(graph, num_vehicles=3, vehicle_capacity=20, verbose=1)
-    start2 = time.time()
+    problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)
 
-    routes_initial = vns.greedy_routing_v3(budget=100000)
-    # visualize_routes(routes_initial, node_info)
-    visualize_routes_go(routes_initial, node_info)
-    vns.calculate_loading_MF()
-    vns.display_results()
-    # vns.remove_unused_stops()
-    # vns.display_results()
+    start1 = time.time()
+    ###__
+    # for i in range(16, 17, 4):
+    #     print("Searching instance {}".format(int((i - 4) / 4)))
+    #     vns.greedy_routing_v1(problem, dist_weight=i / 10)
+    #     vns.calculate_loading_MF(problem)
+    #     problem.display_results(True)
+    #
+    #     # old_dist = 0
+    #     # dist = problem.calculate_distances()
+    #     # while old_dist != dist:
+    #     #     old_dist = dist
+    #     #     vns.intra_two_opt(problem, tolerance=0)
+    #     #     dist = problem.calculate_distances()
+    #     #     vns.calculate_loading_MF(problem)
+    #     #     problem.display_results(False)
+    #
+    #     old_dist = 0
+    #     dist = problem.calculate_distances()
+    #     while old_dist != dist:
+    #         old_dist = dist
+    #         vns.inter_two_opt(problem, tolerance=0)
+    #         dist = problem.calculate_distances()
+    #         vns.calculate_loading_MF(problem)
+    #         problem.display_results(False)
 
-    end2 = time.time()
+    vns.greedy_routing_v1(problem)
+    problem.display_results(False)
+
+    ordered_nbhs = [vns.inter_two_opt, vns.intra_two_opt]
+    vns.general_variable_nbh_search(problem, ordered_nbhs, timeout=120)
+    problem.display_results()
+
+    end1 = time.time()
 
     # print(bcolors.OKGREEN + "Found route with length {}m".format(route_cost) + bcolors.ENDC)
-    print("Algorithm duration: %.4f s"%(end2 - start2))
+    print("Algorithm duration: %.4f s"%(end1 - start1))
 
     ##==========================================================================================================
 
