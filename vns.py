@@ -241,7 +241,7 @@ def intra_two_opt(prob, tolerance=0):
     prob.vehicles = original_vehicles
     return out
 
-def inter_two_opt(prob, tolerance=0): #NOT valid for different vehicles capacities
+def inter_two_opt(prob, tolerance=0):
     swaps = []
     clip = 5
     for l1, v1 in enumerate(prob.vehicles):
@@ -290,38 +290,6 @@ def inter_two_opt(prob, tolerance=0): #NOT valid for different vehicles capaciti
         out.append(v)
     prob.vehicles = original_vehiles
     return out
-
-# def do_two_opt(initial_routes: [[]], cost_matrix: [[]], timeout=10) -> [[]]:
-#     """
-#     Applies the 2-OPT swap to each route.
-#     WARNING: This is a trial and not meant to substitute the other implementations.
-#     :param: initial_routes: array of routes
-#     :param: cost_matrix: cost of all edges in the graph
-#     :param: timeout: maximum execution time per route.
-#     :return: Array of triples (capacity needed for route, route)
-#     """
-#
-#     best_routes = [None] * len(initial_routes)
-#     current_route = 0
-#     improvement_made = True
-#     time_start = time()
-#
-#     for route in initial_routes:
-#         while improvement_made and time() < time_start + timeout:
-#             improvement_made = False
-#             for i in range(1, len(route) - 2):
-#                 for j in range(i+1, len(route)):
-#                     if j-i == 1:
-#                         continue
-#                     new_route = route[:]
-#                     new_route[i:j] = route[j-1:i-1:-1]
-#                     if compute_route_cost(new_route, cost_matrix) < \
-#                             compute_route_cost(best_routes[current_route], cost_matrix):
-#                         best_routes.append(new_route)
-#                         improvement_made = True
-#         current_route += 1
-#     return best_routes
-
 
 """
 General VNS.

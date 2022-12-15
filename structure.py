@@ -6,61 +6,6 @@ from utils import bcolors
 from utils import edge_data_as_numpy
 
 
-class Route (object):
-    """
-    Contains the information of the stops in a given route and the what to do at each station. The dimensions of the
-    array of stops and the array of instrutions must match. The i-th component of the instructions is the number of
-    bikes to load (>0) or unload (<0) at the i-th station.
-    """
-    def __init__(self, stops_in_route=None, instructions=None):
-        """
-        Initialize a route.
-        :param stops_in_route: Array of stops in the route, in the order they are visited. Each station is a string.
-        :param instructions:  Array of loading instructions for each stop. Dimension must agree with stops in the route.
-        :param min_capacity_needed: The minimum capacity that a vehicle needs to perform the route.
-        """
-        if instructions is not None and len(instructions) != len(stops_in_route):
-            raise Exception("Loading instructions do not match.\n")
-
-        self._stops = stops_in_route
-        self._distance = 0
-        self._loading_instructions = instructions
-        self._min_capacity_needed = 0
-
-    def add_stop(self, station: str):
-        self._stops.append(station)
-
-    def remove_stop(self, station: str): #stops are not unique, this will remove the first stop in the path
-        if station in self._stops:
-            self._stops.remove(station)
-        else:
-            raise Exception("Stop to delete: %s is not in route\n" % station)
-
-    def add_instructions(self, instructions: dict):
-        for station in instructions.keys():
-            self._loading_instructions[station] = instructions[station]
-
-    def remove_instructions(self, instructions: dict):
-        for station in instructions.keys():
-            if station in self._stops:
-                del self._loading_instructions[station]
-
-    def get_route_stops(self) -> []:
-        return self._stops
-
-    def set_full_route(self, route: [], instructions=None):
-        self._stops = route
-        if instructions is not None:
-            self._loading_instructions = instructions
-
-    def compute_capacity_needed(self):
-        self._min_capacity_needed = max(self._loading_instructions)
-
-    def reset_route(self):
-        self._stops = []
-        self._loading_instructions = {}
-
-
 class Vehicle(object):
     """
     Vehicle: contains vehicle identification, capacity and vehicle route .
