@@ -183,9 +183,11 @@ class ProblemInstance:
             pass
             # TODO: handle case where sink & source don't match, e.g. by adding an additional node to the graph or changing depot value
 
-    def calculate_distances(self):
+    def calculate_distances(self, vehicles=None):
         total = 0
-        for v in self.vehicles:
+        if vehicles is None:
+            vehicles = self.vehicles
+        for v in vehicles:
             total += self.calculate_distance(v)
         return total
 
@@ -207,9 +209,17 @@ class ProblemInstance:
         """
         vehicle_capacities = {}
         for vehicle in self.vehicles:
-            vehicle_capacities[vehicle.id] = vehicle.capacity
+            vehicle_capacities[vehicle.id] = vehicle.capacity()
 
         return vehicle_capacities
+
+    def get_all_routes(self):
+        current_routes = [None]*len(self.vehicles)
+
+        for vehicle_index, vehicle in enumerate(self.vehicles) :
+            current_routes[vehicle_index] = vehicle.route()
+
+        return current_routes
 
     def assign_routes_to_vehicles(self, routes):
         """

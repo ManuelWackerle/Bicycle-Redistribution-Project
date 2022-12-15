@@ -202,3 +202,34 @@ def save_object(item, save_as="pickle_file"):
 def extract_saved_object(file_name):
     return pickle.load( open( "Saved/" + file_name + ".p", "rb"))
 
+"""
+route_to_distance: compute total distance of new routes.
+INPUT
+    graph: graph over which the routes are defined.
+    routes: matrix (number_vehicles x length of route) whose rows are the routes of each vehicle
+"""
+
+
+def routes_to_distance(graph, routes):
+    route_distance = 0
+    num_vehicles = len(routes)
+
+    for vehicle in range(num_vehicles):
+        for route_stop in range(len(routes[vehicle])-1):
+            route_distance += graph.edges[str(routes[vehicle][route_stop]), str(routes[vehicle][route_stop + 1])]['dist']
+
+    return route_distance
+
+
+def compute_route_cost (route: [], cost_matrix: [[]]) -> float:
+    """
+    Computes cost of a given route.
+    :param route: array of visited stations.
+    :param cost_matrix: cost of edges.
+    :return: total cost of route
+    """
+    cost = 0
+    for index in range(len(route)-1):
+        cost += cost_matrix[index, index+1]
+
+    return cost

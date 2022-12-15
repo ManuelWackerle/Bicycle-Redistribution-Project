@@ -57,7 +57,7 @@ def greedy_routing_v1(prob, source='0', dist_weight=3, tsp_weight=1):
                 graph.nodes[source]['sup'] -= move
         else:
             for v in prob.vehicles:
-                v.append_next(source, 0)
+                v.add_stop(source, 0)
 
         prob.allocated = 0
         while prob.allocated < prob.imbalance:
@@ -219,9 +219,11 @@ def intra_two_opt(prob, tolerance=0):
             if best > 0:
                 swaps[l].append([best, b1, b2])
 
+    original_vehicles = deepcopy(prob.vehicles)
     out = []
     for l in range(len(prob.vehicles)):
-        v = deepcopy(prob.vehicles[l])
+        # print(prob.vehicles[l].route())
+        v = prob.vehicles[l]
         out.append(v)
         swaps[l].sort(reverse=True)
         mn, mx = len(v.route()) + 1, -1
@@ -236,12 +238,13 @@ def intra_two_opt(prob, tolerance=0):
                     mn, mx = min(b1, mn), max(b2, mx)
                 else:
                     v.set_route(route)
+    prob.vehicles = original_vehicles
     return out
 
 def inter_two_opt(prob, tolerance=0): #NOT valid for different vehicles capacities
     swaps = []
     clip = 5
-    for l1 in range(len(prob.vehicles)):
+    for l1, v1 in enumerate(prob.vehicles):
         route1 = prob.vehicles[l1].route()
         for l2 in range(l1 + 1, len(prob.vehicles)):
             route2 = prob.vehicles[l2].route()
@@ -264,13 +267,12 @@ def inter_two_opt(prob, tolerance=0): #NOT valid for different vehicles capaciti
     swaps.sort(reverse=True)
     used = set()
     out = []
-    for v in prob.vehicles:
-        out.append(deepcopy(v))
+    original_vehiles = deepcopy(prob.vehicles)
     for s in range(len(swaps)):
         _, r1, r2, b1, b2 = swaps[s]
         if r1 not in used and r2 not in used:
             #Todo, implement index change tracking so that the other swaps can also be used and delete this check
-            v1, v2 = out[r1], out[r2]
+            v1, v2 = prob.vehicles[r1], prob.vehicles[r2]
             route1 = deepcopy(v1.route())
             route2 = deepcopy(v2.route())
             v1.set_route(route1[:b1 + 1] + route2[b2 + 1:])
@@ -284,8 +286,10 @@ def inter_two_opt(prob, tolerance=0): #NOT valid for different vehicles capaciti
             else:
                 v1.set_route(route1)
                 v2.set_route(route2)
+    for v in prob.vehicles:
+        out.append(v)
+    prob.vehicles = original_vehiles
     return out
-
 
 # def do_two_opt(initial_routes: [[]], cost_matrix: [[]], timeout=10) -> [[]]:
 #     """
@@ -346,87 +350,100 @@ as a route in the neighbourhood with lower cost is found, it is set as the curre
 #             if compute_route_cost(nbh_routes[index], cost_matrix) < compute_route_cost(current_routes, cost_matrix):
 #                 current_routes = nbh_routes[index]
 #                 break
+#         TODO: Change how to compute the route cost now using the built in function inside the ProblemInstance class
 #         if compute_route_cost(best_routes, cost_matrix) <= compute_route_cost(current_routes, cost_matrix):
 #             break
 #
 #     return best_routes
-#
-#
-# def shake_solution(current_routes: [], nbh_operator) -> [[]]:
+
+
+# def shake_solution(problem_instance, nbh_operator) -> [[]]:
 #     """
 #     Return a random solution from the given neighbourhood.
-#     :param current_routes: array of routes to shake.
+#     :param problem_instance: array of routes to shake.
 #     :param nbh_operator: neighbourhood operator that takes a set of routes and returns a neighbouring route.
 #     :return: modified routes in the neighbourhood.
 #     """
 #
-#     list_of_candidate_routes = nbh_operator(current_routes)
+#     list_of_candidate_routes = nbh_operator(problem_instance)
 #     index = randint(0, len(list_of_candidate_routes))
 #
 #     return list_of_candidate_routes[index]
-#
-#
-# def sequential_variable_nbh_descent(current_routes: [[]], ordered_nbhs: [], cost_matrix: [[]], timeout=10) -> [[]]:
-#     """
-#     ** The idea behind Variable Neighbourhood descent, VND. **
-#     If a solution is a local optimizer with respect to several neighbourhood structures, then it is more likely to be a
-#     global optimizer. A sequential VND explores neighbourhoods in a sequence. Works as follows:
-#     1.  Several neighbourhood structures are ordered in a list, N = {N1,..., Nl_max}.
-#     2.  Starting on a given solution, x, the sequential VND explores Nl for 1<=l<=lmax one after the other in the established
-#         order. The exploration of neighbourhoods is done in first improvement fashion.
-#     3.  As soon as an improvement in a given neighbourhood occurs, the process is restarted from the first neighbourhood
-#         (and in the same order) with the new solution.
-#     4.  The process stops when the current solution can not be improved with respect to any neighbourhood.
-#     """
-#     while True:
-#         stop = False
-#         current_nbh = 0  # Start at the first neighbourhood in the list.
-#         best_routes = current_routes
-#         time_start = time()
-#         while current_nbh < len(ordered_nbhs) and time() < time_start + timeout:
-#             nbh_routes = ordered_nbhs[current_nbh](best_routes)
-#             modified_routes = local_search_first_improvement(best_routes, nbh_routes, cost_matrix)
-#             change_nbh_sequential(current_routes, modified_routes, cost_matrix, current_nbh)
-#         if compute_route_cost(current_routes, cost_matrix) < compute_route_cost(best_routes, cost_matrix):
-#             stop = True
-#             break
-#
-#     return best_routes
-#
-#
-# def change_nbh_sequential(current_routes: [[]], modified_routes: [[]], cost_matrix: [[]], nbh) -> [int, [[]]]:
-#     """
-#     Guides the vns heuristic when exploring a solution space. It decides which nbh will be explored next
-#     :param current_routes: current best routes
-#     :param modified_routes: candidate for better routes
-#     :param cost_matrix: matrix cost of the solution
-#     :param nbh: neighbourhood to explore
-#     :return:
-#     """
-#     if compute_route_cost(current_routes, cost_matrix) > compute_route_cost(modified_routes, cost_matrix):
-#         current_routes = modified_routes
-#         nbh = 0
-#     else:
-#         nbh = nbh + 1
-#
-#     return nbh, current_routes
 
 
-# def general_variable_nbh_search (current_routes: [[]], ordered_nbhs: [], cost_matrix: [[]], timeout = 10):
-#     """
-#     General VNS with VND
-#     :param current_routes: current array of routes for all vehicles
-#     :param ordered_nbhs: list of ordered neighbourhood operators.
-#     :param cost_matrix: to compute route costs.
-#     :param timeout: maximum execution time.
-#     :return: best route found.
-#     """
-#     start_time = time()
-#     while time() < start_time + timeout:
-#         nbh_index = 0
-#         while nbh_index < len(ordered_nbhs):
-#             new_routes = shake_solution(current_routes, nbh_index)
-#             best_route = sequential_variable_nbh_descent(new_routes, ordered_nbhs, cost_matrix)
-#             change_nbh_sequential(current_routes, best_route, cost_matrix, nbh_index)
-#
-#     return current_routes
+def sequential_variable_nbh_descent(problem_instance, ordered_nbhs: [], timeout=10) -> [[]]:
+    """
+    ** The idea behind Variable Neighbourhood descent, VND. **
+    If a solution is a local optimizer with respect to several neighbourhood structures, then it is more likely to be a
+    global optimizer. A sequential VND explores neighbourhoods in a sequence. Works as follows:
+    1.  Several neighbourhood structures are ordered in a list, N = {N1,..., Nl_max}.
+    2.  Starting on a given solution, x, the sequential VND explores Nl for 1<=l<=lmax one after the other in the established
+        order. The exploration of neighbourhoods is done in first improvement fashion.
+    3.  As soon as an improvement in a given neighbourhood occurs, the process is restarted from the first neighbourhood
+        (and in the same order) with the new solution.
+    4.  The process stops when the current solution can not be improved with respect to any neighbourhood.
+    """
+    loop = True
+    while loop:
+
+        current_nbh = 0  # Start at the first neighbourhood in the list.
+        best_routes = problem_instance.get_all_routes()
+
+        time_start = time.time()
+        while current_nbh < len(ordered_nbhs) and time.time() < time_start + timeout:
+            best_vehicles_in_nbh = ordered_nbhs[current_nbh](problem_instance)
+            # modified_routes = local_search_first_improvement(best_routes, nbh_routes, cost_matrix)
+            change_nbh_sequential(problem_instance, best_vehicles_in_nbh, current_nbh)
+
+            loop = not (problem_instance.calculate_distances() == problem_instance.calculate_distances(best_vehicles_in_nbh))
+            break
+
+    return best_routes
+
+
+def change_nbh_sequential(problem_instance, modified_vehicles: [], nbh) -> int:
+    """
+    Guides the vns heuristic when exploring a solution space. It decides which nbh will be explored next
+    :param current_routes: current best routes
+    :param modified_routes: candidate for better routes
+    :param cost_matrix: matrix cost of the solution
+    :param nbh: neighbourhood to explore
+    :return:
+    """
+    if problem_instance.calculate_distances() > problem_instance.calculate_distances(modified_vehicles):
+        print("Changing from neighbourhood ", nbh, "to neighbourhood ", end=''),
+        problem_instance.vehicles = modified_vehicles
+        nbh = 0
+        print(nbh)
+    else:
+        print("Changing from neighbourhood ", nbh, "to neighbourhood ", end=''),
+        nbh = nbh + 1
+        print(nbh)
+
+    return nbh
+
+
+def general_variable_nbh_search(problem_instance, ordered_nbhs: [], timeout=10):
+    """
+    General VNS with VND
+    :param problem_instance: current array of routes for all vehicles
+    :param ordered_nbhs: list of ordered neighbourhood operators.
+    :param cost_matrix: to compute route costs.
+    :param timeout: maximum execution time.
+    :return: best route found.
+    """
+
+    start_time = time.time()
+    nbh_index = 0
+
+    while nbh_index < len(ordered_nbhs) and time.time() < start_time + timeout:
+        new_vehicle_routes = ordered_nbhs[nbh_index](problem_instance)
+        calculate_loading_MF(problem_instance)
+        problem_instance.display_results(False)
+
+        # new_routes = [None]*len(new_vehicle_routes)
+        # for vehicle_index, vehicle in enumerate(new_vehicle_routes):
+        #     new_routes[vehicle_index] = vehicle.route()
+
+        # sequential_variable_nbh_descent(problem_instance, ordered_nbhs)
+        nbh_index = change_nbh_sequential(problem_instance, new_vehicle_routes, nbh_index)
