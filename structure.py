@@ -276,6 +276,15 @@ class ProblemInstance:
                                                                               self.imbalance) + bcolors.ENDC
         print(results)
 
+    def remove_nodes_zero_demand(self):
+        """
+        Nodes with zero demand need not be considered in the rebalancing problem with monotonicity assumption,
+        so we can remove them from the graph before operation.
+        """
+        for node, demand in enumerate(self.model.nodes()):
+            if demand == 0:
+                self.model.remove_node(node)
+
     def reset(self):
         self.routes = []
         self.instructions = []
