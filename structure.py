@@ -12,12 +12,9 @@ class Vehicle(object):
     """
     def __init__(self, capacity: int, vehicle_id: str):
         """
-        Initializes the vehicle.
-        :param capacity: Maximum number of bikes that the vehicle can carry at any time.
+        Initializes the vehicle
+        :param capacity: Maximum number of bikes that the vehicle can carry at any time
         :param vehicle_id: License plate or other identifier of vehicle
-        :param vehicle_current_position: Position of the vehicle as element in route array. This is an int, not a str.
-        :param vehicle_current_load: Current number of bikes in the vehicle.
-        :param vehicle_route: Route assigned to the vehicle.
         """
         self._capacity = capacity
         self._id = vehicle_id
@@ -40,10 +37,10 @@ class Vehicle(object):
         # self._current_load = 0
 
     def current_stop(self):
-        return  self._current_position
+        return self._current_position
 
     def current_load(self):
-        return  self._current_load
+        return self._current_load
 
     def set_route(self, route):
         self._route = route
@@ -55,7 +52,7 @@ class Vehicle(object):
         self._loads = loads
 
     def loads(self):
-        return  self._loads
+        return self._loads
 
     def capacity(self):
         return self._capacity
@@ -64,10 +61,9 @@ class Vehicle(object):
         return self._id
 
 
-
 class ProblemInstance:
     """
-    ProblemInstace: contains map and vehicles operating.
+    ProblemInstance: contains map and vehicles operating.
         model: graph of possible bike locations.
         vehicles: list of vehicles operating.
         imbalance: number of non-balanced bikes. -1 if not computed.
@@ -126,8 +122,8 @@ class ProblemInstance:
             self.imbalance = self.total_source
         else:
             pass
-            # TODO: handle case where sink & source don't match, e.g. by adding an additional node to the graph or changing depot value
-
+            # TODO: handle case where sink & source don't match, e.g. by adding an additional
+            #  node to the graph or changing depot value
 
     def calculate_distances(self, vehicles=None):
         total = 0
@@ -159,22 +155,25 @@ class ProblemInstance:
 
         return vehicle_capacities
 
-    def get_all_routes(self):
-        current_routes = [None]*len(self.vehicles)
+    def get_all_routes(self, vehicles=None):
+        if vehicles is None:
+            vehicles = self.vehicles
 
-        for vehicle_index, vehicle in enumerate(self.vehicles) :
+        current_routes = [None]*len(vehicles)
+
+        for vehicle_index, vehicle in enumerate(vehicles):
             current_routes[vehicle_index] = vehicle.route()
 
         return current_routes
 
     def assign_routes_to_vehicles(self, routes):
         """
-        Set the routes for each vehicle.
-        :param  routes: array of Route elements to be set for the vehicles.
+        Set the routes for each vehicle
+        :param  routes: array of Route elements to be set for the vehicles
         """
         assert len(routes) == len(self.vehicles), "Number of routes and vehicles don't match, can't set routes.\n"
 
-        # Check compatibility of vehicles and routes. For each route, we must have a vehicle with suff. capacity
+        # Check compatibility of vehicles and routes. For each route, we must have a vehicle with sufficient capacity
         assert set(self.get_all_capacities()) == set(routes[:, 0]), "Vehicle capacities and route loads don't match"
 
         unused_vehicles = self.vehicles
@@ -195,7 +194,7 @@ class ProblemInstance:
 
         return len(unassigned_routes)
 
-    def compute_imbalance(self, auxiliary_graph = None):
+    def compute_imbalance(self, auxiliary_graph=None):
         if auxiliary_graph is None:
             auxiliary_graph = self.model
         for node, node_data in auxiliary_graph.nodes.items():
@@ -225,7 +224,7 @@ class ProblemInstance:
 
     # def furthest_nodes(self, number=0):
     #     """
-    #     Given a source node returns a list with <num.vehicles> nodes that are far away from the source node and each other
+    #     Given a source node returns a list with <num.vehicles> nodes that are far away from the source and each other
     #
     #     :return furthest_nodes: array of nodes from self.model
     #     """
@@ -249,7 +248,7 @@ class ProblemInstance:
 
     def display_results(self, show_instructions=True):
         """
-        Displays the information in self.routes and self.instructions in a human readable way
+        Displays the information in routes and instructions in a human-readable way
         """
         results = "Results\t\t"
         if show_instructions:
