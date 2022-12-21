@@ -6,6 +6,9 @@ variants, by P Hansen et al.
 import networkx as nx
 from copy import deepcopy
 import time
+from tqdm import tqdm
+import random
+random.seed(8)
 
 import numpy as np
 
@@ -297,6 +300,143 @@ def inter_two_opt(prob, tolerance=0):
     return out
 
 
+def remove_one_station_generator(vehicles, at_random=False):
+    """generate routes by removing one station
+
+    Write
+        N = Number of trucks (=len(self.routes))
+        Ln = Route length (=len(self.routes[n])-1)
+        C = Number of candidates
+    Note
+        Ln depends on n in N. (route length might be different for each vehicles)
+    :return
+        Generator which generates vechiles with the shape (N, Ln) with total number C
+    """
+    idxes = []
+    for i in range(len(vehicles)):
+        if len(vehicles[i].route()) <= 2:
+            # if route length is less than two, it contains only depot
+            continue
+        # ignore index 0 and -1 since both are depot
+        for j in range(1, len(vehicles[i].route())-1):
+            idxes.append([i, j])
+
+    if at_random:
+        random.shuffle(idxes)  # generate at random
+
+    for i, j in idxes:
+        candidate = deepcopy(vehicles)
+        candidate[i].set_route(candidate[i].route()[:j] + candidate[i].route()[j+1:])
+        candidate[i].set_loads(candidate[i].loads()[:j] + candidate[i].loads()[j+1:])
+        yield candidate
+
+
+def _get_rebalanced_graph(graph, vehicles):
+    """given routes and instructions, returns graph after rebalance
+    """
+    for v in vehicles:
+        prev_load = 0
+        for s in range(len(v.route())-1):
+            load = v.loads()[s]
+            diff = prev_load - load
+            prev_load = load
+            graph.nodes[v.route()[s]]['sup'] += diff
+    return graph
+
+
+def insertU_nearest_generator(vehicles, unbalanced_stations, graph):
+    """insert unbalanced stations to minimum distance position on each route
+
+    return:
+        Generator which generate insertU candidate
+    """
+    copied_vehicles = deepcopy(vehicles)
+    random.shuffle(copied_vehicles)
+    random.shuffle(unbalanced_stations)
+    for u in unbalanced_stations:
+        for vehicle in copied_vehicles:
+            candidate = deepcopy(vehicles)
+            route = vehicle.route()
+            j = 1
+            if route[0] == u or route[1] == u:
+                continue
+            distance = graph.edges[route[0], u]['dist'] + graph.edges[route[1], u]['dist']  # init
+            for k in range(1, len(route) - 1):
+                if route[j-1] == u or route[j] == u:
+                    continue
+                current_distance = graph.edges[route[j-1], u]['dist'] + graph.edges[route[j], u]['dist']
+                if current_distance < distance:
+                    distance = current_distance
+                    j = k
+            vehicle.set_route(vehicle.route()[:j] + [u] + vehicle.route()[j:])
+            # set new load as 0
+            vehicle.set_loads(vehicle.loads()[:j] + [0] + vehicle.loads()[j:])
+            yield candidate
+
+
+def insertU_generator(vehicles, unbalanced_stations, at_random=False):
+    """generate routes by inserting unbalanced station
+
+    Write
+        N = Number of trucks (=len(self.routes))
+        Ln = Route length (=len(self.routes[n])-1)
+        C = Number of candidates
+    Note
+        Ln depends on n in N. (route length might be different for each vehicles)
+    :return
+        Generator which generates vechiles with the shape (N, Ln) with total number C
+    """
+    idxes = []
+    for u in unbalanced_stations:
+        for i in range(len(vehicles)):
+            if len(vehicles[i].route()) <= 2:
+                # if route length is less than two, it contains only depot
+                continue
+            for j in range(1, len(vehicles[i].route()) - 1):
+                idxes.append([i, j, u])
+
+    if at_random:
+        random.shuffle(idxes)
+
+    for i, j, u in idxes:
+        candidate = deepcopy(vehicles)
+        candidate[i].set_route(candidate[i].route()[:j] + [u] + candidate[i].route()[j:])
+        candidate[i].set_loads(candidate[i].loads()[:j] + [0] + candidate[i].loads()[j:])  # set new load as 0
+        yield candidate
+
+
+def _get_loading_and_unbalanced_stations(problem_instance, vehicles):
+    """Given vehicles, calculate best loading instructions and return unbalanced stations
+    """
+    calculate_loading_MF(problem_instance)
+    graph = _get_rebalanced_graph(problem_instance.model.copy(), vehicles)
+    unbalanced_stations = [x for x in graph.nodes if graph.nodes[x]['sup'] != 0]
+    return unbalanced_stations
+
+
+def remove_and_insert_station(problem_instance):
+    """Remove and insert station VNS.
+       The balanced feasibility is satisfied.
+       As soon as it finds a feasible candidate, return
+
+    :return
+        vehicles
+    """
+    copied_problem_instance = deepcopy(problem_instance)
+
+    for removed_vehicles in tqdm(remove_one_station_generator(copied_problem_instance.vehicles, at_random=True)):
+        unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, removed_vehicles)
+        if not unbalanced_stations:
+            # if removal neighbor routes are possibly balanced, return them
+            return removed_vehicles
+        for inserted_vehicles in insertU_nearest_generator(removed_vehicles, unbalanced_stations, copied_problem_instance.model.copy()):
+            # for inserted_vehicles in insertU_generator(removed_vehicles, unbalanced_stations, at_random=True):
+            unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, inserted_vehicles)
+            if not unbalanced_stations:
+                return inserted_vehicles
+    # if there is no candidate, return original
+    return copied_problem_instance.vehicles
+
 """
 General VNS.
 """
@@ -491,6 +631,6 @@ def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=c
 
         elif change_nbh == change_nbh_skewed_sequential:
             nbh_index = change_nbh_skewed_sequential(problem_instance, new_vehicle_routes, nbh_index, skew_param,
-                                                     verbose)
+                                                    verbose)
         else:
             nbh_index = change_nbh(problem_instance, new_vehicle_routes, nbh_index, verbose)
