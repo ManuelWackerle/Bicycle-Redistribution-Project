@@ -365,7 +365,6 @@ def sequential_variable_nbh_descent(problem_instance, ordered_nbhs: [], timeout=
 
             loop = not (problem_instance.calculate_distances() == problem_instance.calculate_distances(best_vehicles_in_nbh))
             break
-
     return best_routes
 
 

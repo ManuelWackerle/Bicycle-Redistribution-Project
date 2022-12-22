@@ -1,6 +1,8 @@
 """
 Definitions of the base classes used in the problem.
 """
+from copy import deepcopy
+
 import networkx as nx
 from utils import bcolors
 from utils import edge_data_as_numpy
@@ -63,6 +65,12 @@ class Vehicle(object):
     def id(self):
         return self._id
 
+    def reset(self):
+        self._route = []
+        self._loads = []
+        self._distance = 0
+        self._current_position = None
+        self._current_load = 0
 
 
 class ProblemInstance:
@@ -88,11 +96,6 @@ class ProblemInstance:
         self.allocated = 0
         self._initialize_tracking_variables(input_graph)
         self.mf_graph = None
-
-        # result variables
-        self.routes = []
-        self.instructions = []
-        self.distances = []
 
         # G.
         # self.neighbourhoods = []  # keys of neighbourhoods to be searched.
@@ -142,6 +145,7 @@ class ProblemInstance:
         prev = vehicle.route()[0]
         for s in range(1, len(vehicle.route())):
             if prev == vehicle.route()[s]:
+                vehicle.remove_stop(s)
                 print("Warning: same route twice in  sequence - might be a mistake")
             else:
                 dist += self.model.edges[prev, vehicle.route()[s]]['dist']
@@ -247,6 +251,27 @@ class ProblemInstance:
     #         furthest_nodes.append(best)
     #     return furthest_nodes
 
+    # def tsp_bound(self):
+    #     graph = deepcopy(self.model)
+    #     m = len(graph.nodes)
+    #     print(m)
+    #     for n in self.model.nodes:
+    #         while graph.nodes[n]['sup'] > 5: #self.vehicles[0].capacity():
+    #             graph.nodes[n]['sup'] -= 5
+    #             graph.add_node(str(m))
+    #             for o in graph.nodes:
+    #                 if o != str(m) and o != n:
+    #                     graph.add_edge(str(m), o, dist=graph.edges[n, o]['dist'])
+    #             graph.add_edge(str(m), n, dist=1794)
+    #             m += 1
+    #     print(m)
+    #     seq = nx.algorithms.approximation.christofides(graph, weight='dist')
+    #     dist = 0
+    #     for s in range(1, len(seq)):
+    #         dist += graph.edges[seq[s-1], seq[s]]['dist']
+    #     print("TSP soltion: {} => lower bound = {}".format(dist, dist/1.5))
+
+
     def display_results(self, show_instructions=True):
         """
         Displays the information in self.routes and self.instructions in a human readable way
@@ -277,8 +302,8 @@ class ProblemInstance:
         print(results)
 
     def reset(self):
-        self.routes = []
-        self.instructions = []
-        self.distances = []
+        for v in self.vehicles:
+            v.reset()
         self.allocated = 0
+
 

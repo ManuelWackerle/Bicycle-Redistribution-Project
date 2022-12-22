@@ -50,7 +50,9 @@ def visualize_routes(routes, node_data):
             y_line = [node_data[str(previous_station)]['pos'][1], node_data[str(current_station)]['pos'][1]]
             plt.plot(x_line, y_line, color=route_color[route_num], zorder=-1)
     plt.axis('equal')
+    # plt.savefig('Saved/routes.png')
     plt.show()
+
 
 def visualize_routes_go(routes, node_data):
     station_color = 'blue'
