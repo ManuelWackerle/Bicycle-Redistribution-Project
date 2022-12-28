@@ -28,15 +28,15 @@ from vns import (
 )
 
 # Create a list of all files that we want to test.
-instances_dir = os.path.join(os.path.dirname(os.path.abspath(os.getcwd())), "Problem Instances")
+instances_dir = os.path.relpath('..\\..\\Problem Instances', os.path.dirname(os.path.abspath(os.getcwd())))
 instances_to_test = os.listdir(instances_dir)
+print(instances_to_test)
 
 # We don't consider the whole dataset for the test.
 instances_to_test.remove("felix_data.csv")
 instances_to_test.remove("sample_graph_04.csv")
 instances_to_test.remove("sample_graph_01.csv")
-
-instances_to_test = ["sample_graph_02", "sample_graph_02"]
+instances_to_test.remove("sample_graph_01_edited.csv")
 
 # Set list of all neighbourhood changes to test. The sequential nbh change is treated separately
 list_of_nbh_changes = [change_nbh_sequential, change_nbh_cyclic, change_nbh_pipe]
@@ -80,10 +80,8 @@ for try_num in range(max_tries):
     print("** Try number ", try_num + 1, "of ", max_tries, "**")
     # Loop over all instances
     for instance in instances_to_test:
-        # New entry in dictionary
-
         # Load graph
-        graph, node_info = load_graph(os.path.splitext(instance)[0])
+        graph, node_info = load_graph(os.path.splitext(instance)[0], path=instances_dir)
         if graph is None:
             sys.exit("Couldn't create graph")
 
