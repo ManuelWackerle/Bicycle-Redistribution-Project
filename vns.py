@@ -6,9 +6,11 @@ variants, by P Hansen et al.
 import networkx as nx
 from copy import deepcopy
 import time
+import numpy as np
 # from route import compute_route_cost
 from random import randint
 
+import utils
 
 """
 Neighbourhood operators. Given an initial route, each operator returns an array of new routes obtained by some 
@@ -34,7 +36,7 @@ def greedy_routing_v1(prob, source='0', dist_weight=3, tsp_weight=1):
     graph = prob.model.copy()
     mean = prob.mean_distance()
 
-    #Using a tsp solution to select successor nodes where possible
+    # Using a tsp solution to select successor nodes where possible
     successors = {}
     if tsp_weight != 1:
         guided = nx.algorithms.approximation.christofides(graph, weight='dist')
@@ -92,6 +94,7 @@ def greedy_routing_v1(prob, source='0', dist_weight=3, tsp_weight=1):
             if v.current_stop() != source:
                 v.add_stop(source, 0)
 
+
 def greedy_routing_PILOT(prob):
     """
     Finds a set of vehicle routes with low cost based on a greedy approach.
@@ -100,6 +103,7 @@ def greedy_routing_PILOT(prob):
     :return routes: the set vehicle routes
     """
     pass  # Todo: implement
+
 
 def calculate_loading_MF(prob, start_load=0, source='0'):
     """
@@ -144,7 +148,7 @@ def calculate_loading_MF(prob, start_load=0, source='0'):
             elif demand < 0:
                 mf_graph.add_edge(node_str, node)
             if prev_node != 0:
-                mf_graph.add_edge(prev_node, node_str, capacity = v.capacity())
+                mf_graph.add_edge(prev_node, node_str, capacity=v.capacity())
             prev_node = node_str
     prob.show_info("Graph generated with {n} nodes and {e} edges. Source flow: {s}, Sink flow: {t}"
                    .format(n=len(mf_graph.nodes), e=len(mf_graph.edges), s=total_source, t=total_sink))
@@ -158,13 +162,14 @@ def calculate_loading_MF(prob, start_load=0, source='0'):
 
     # This is where the magic happens
     # print(mf_graph.edges.data())
-    value, data = nx.maximum_flow(mf_graph, 's', 't')  # , flow_func=nx.algorithms.flow.shortest_augmenting_path) #TODO: investigate this algorithm exactly and see if it can be done better
+    value, data = nx.maximum_flow(mf_graph, 's',
+                                  't')  # , flow_func=nx.algorithms.flow.shortest_augmenting_path) #TODO: investigate this algorithm exactly and see if it can be done better
     prob.allocated = value - start_load
 
     if value != total_source or value != total_sink:
         prob.show_warning(
             "Bikes can not be allocated to full capacity. Source flow: {s}, Sink flow: {t}, Allocated: {a}"
-                .format(s=total_source, t=total_sink, a=value))
+            .format(s=total_source, t=total_sink, a=value))
     else:
         prob.show_info("Bike allocation is exact. Total allocated bicycles: {}".format(value))
 
@@ -180,6 +185,7 @@ def calculate_loading_MF(prob, start_load=0, source='0'):
             loads.append(data[node_str][next_str])
         prob.vehicles[l].set_loads(loads)
 
+
 def remove_unused_stops(prob):
     """
     Given a set of vehicle routes, removes all the stops where the vehicle neither load nor unloads any bikes.
@@ -187,7 +193,7 @@ def remove_unused_stops(prob):
     for v in prob.vehicles:
         remove = []
         prev_load = 0
-        for s in range(1, len(v.route())-1): #ignore first and last stops (source)
+        for s in range(1, len(v.route()) - 1):  # ignore first and last stops (source)
             load = v.loads()[s]
             if load == prev_load:
                 remove.append(s)
@@ -195,6 +201,7 @@ def remove_unused_stops(prob):
         remove.reverse()
         for r in remove:
             v.remove_stop(r)
+
 
 def intra_two_opt(prob, tolerance=0):
     swaps = []
@@ -241,6 +248,7 @@ def intra_two_opt(prob, tolerance=0):
     prob.vehicles = original_vehicles
     return out
 
+
 def inter_two_opt(prob, tolerance=0):
     swaps = []
     clip = 5
@@ -262,7 +270,7 @@ def inter_two_opt(prob, tolerance=0):
                             best = diff
                             r1, r2, b1, b2 = l1, l2, s1, s2
             if best > 0:
-              swaps.append([best, r1, r2, b1, b2])
+                swaps.append([best, r1, r2, b1, b2])
 
     swaps.sort(reverse=True)
     used = set()
@@ -271,7 +279,7 @@ def inter_two_opt(prob, tolerance=0):
     for s in range(len(swaps)):
         _, r1, r2, b1, b2 = swaps[s]
         if r1 not in used and r2 not in used:
-            #Todo, implement index change tracking so that the other swaps can also be used and delete this check
+            # Todo, implement index change tracking so that the other swaps can also be used and delete this check
             v1, v2 = prob.vehicles[r1], prob.vehicles[r2]
             route1 = deepcopy(v1.route())
             route2 = deepcopy(v2.route())
@@ -290,6 +298,120 @@ def inter_two_opt(prob, tolerance=0):
         out.append(v)
     prob.vehicles = original_vehiles
     return out
+
+
+def swap_one_one(vehicles, route_index_a, station_index_a, route_index_b, station_index_b):
+    vehicles_modified = deepcopy(vehicles)
+    vehicles_modified[route_index_a].route()[station_index_a], vehicles_modified[route_index_b].route()[station_index_b] = \
+        vehicles[route_index_b].route()[station_index_b], vehicles[route_index_a].route()[station_index_a]
+    return vehicles_modified
+
+def apply_swap_one_one(full_route, swap_operation):
+    [stop_a, stop_b] = swap_operation
+    full_route_modified = deepcopy(full_route)
+    full_route_modified[stop_a], full_route_modified[stop_b] = full_route[stop_b], full_route[stop_a]
+    return full_route_modified
+
+def search_stop_of_station(full_route, station):
+    stop = full_route.index(station)
+    return stop
+def get_one_one_neighbours_swaps(full_route, graph):
+    swap_operations = []
+    for stop_a, station_a in enumerate(full_route):
+        if station_a == '0':
+            continue
+        # return the closest neighbor station and find its stop
+        station_b = utils.sorted_neighbour_list(graph, station_a, full_route)[0]
+        if station_b == '0':
+            station_b = utils.sorted_neighbour_list(graph, station_a, full_route)[1]
+        stop_b = search_stop_of_station(full_route, station_b)
+
+        swap_operations.append([stop_a, stop_b])
+    return swap_operations
+
+def swap_one_one_chained(problem, neighbor_search_limit = 5):
+    graph = problem.model
+    problem_modified = deepcopy(problem)
+    vehicles_initial = problem.vehicles
+    full_route_initial = []
+    for vehicle in vehicles_initial:
+        if vehicle.route() != ['0']:
+            full_route_initial += vehicle.route()
+        else:
+            full_route_initial += ['0', '0']
+    print(full_route_initial)
+
+    # print(full_route_initial)
+
+    vehicles_modified = deepcopy(vehicles_initial)
+    vehicles_best = deepcopy(vehicles_initial)
+    swap_operations = get_one_one_neighbours_swaps(full_route_initial, graph)
+
+    for key, swap_operation in enumerate(swap_operations):
+        # print(full_route_initial)
+        full_route_modified = apply_swap_one_one(full_route_initial, swap_operation)
+        # print(swap_operation)
+        cost_old = problem.calculate_distances()
+        # print('problem', problem.calculate_distances())
+
+        # for v in problem.vehicles:
+        #     print(v.route())
+
+        apply_full_route(problem_modified, full_route_modified)
+        # print('problem', problem.calculate_distances())
+
+        # print(full_route_modified)
+
+        # for v in problem_modified.vehicles:
+        #     print(v.route())
+
+        # print(problem.vehicles[0].route())
+        # print(problem_modified.vehicles[0].route())
+        cost_new = problem_modified.calculate_distances()
+        calculate_loading_MF(problem)
+        calculate_loading_MF(problem_modified)
+
+        if cost_new <= cost_old:
+            if problem_modified.allocated == problem_modified.imbalance:
+                problem = deepcopy(problem_modified)
+                full_route_initial = deepcopy(full_route_modified)
+
+    vehicles_modified = []
+    for v in problem.vehicles:
+        vehicles_modified.append(v)
+
+    return vehicles_modified
+
+def full_route_to_separate(problem, full_route):
+    route_flag = False
+    routes = []
+    route = []
+    for stop in full_route:
+        route.append(stop)
+        if stop == '0':
+            if route_flag == True:
+                if route == ['0', '0']:
+                    route = ['0']
+                routes.append(route)
+                route = []
+            else:
+                pass
+            route_flag = not route_flag
+    return routes
+
+def apply_full_route(problem_modified, full_route):
+    routes = full_route_to_separate(problem_modified, full_route)
+    for key, r in enumerate(routes):
+        problem_modified.vehicles[key].set_route(r)
+
+
+
+
+
+
+def swap_two_one():
+    pass
+
 
 """
 General VNS.
@@ -363,7 +485,8 @@ def sequential_variable_nbh_descent(problem_instance, ordered_nbhs: [], timeout=
             # modified_routes = local_search_first_improvement(best_routes, nbh_routes, cost_matrix)
             change_nbh_sequential(problem_instance, best_vehicles_in_nbh, current_nbh)
 
-            loop = not (problem_instance.calculate_distances() == problem_instance.calculate_distances(best_vehicles_in_nbh))
+            loop = not (problem_instance.calculate_distances() == problem_instance.calculate_distances(
+                best_vehicles_in_nbh))
             break
 
     return best_routes
@@ -405,6 +528,7 @@ def general_variable_nbh_search(problem_instance, ordered_nbhs: [], timeout=10):
     nbh_index = 0
 
     while nbh_index < len(ordered_nbhs) and time.time() < start_time + timeout:
+        new_vehicle_routes = ordered_nbhs[nbh_index](problem_instance)
         new_vehicle_routes = ordered_nbhs[nbh_index](problem_instance)
         calculate_loading_MF(problem_instance)
         problem_instance.display_results(False)

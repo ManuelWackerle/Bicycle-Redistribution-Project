@@ -137,7 +137,26 @@ def nodes_data_as_numpy(graph: nx.Graph, data_str):
         nodes.append(data[data_str])
     return np.array(nodes)
 
+def cost_between_stations(graph, node_a, node_b, metric='dist'):
+    if node_a == node_b:
+        return 0.0
+    cost = graph.edges[node_a, node_b][metric]
+    return cost
+def neighbour_list(graph, node):
+    neighbors = [n for n in graph.neighbors(node)]
+    return neighbors
+def sorted_neighbour_list(graph, node, full_route):
+    neighbors = neighbour_list(graph, node)
+    neighbors_cost = [cost_between_stations(graph, node, neighbor) for neighbor in neighbors]
+    sort_args = np.argsort(neighbors_cost)
+    neighbors_sorted = [neighbors[arg] for arg in sort_args]
 
+
+    out = []
+    for station in neighbors_sorted:
+        if station in full_route:
+            out.append(station)
+    return out
 def edge_data_as_numpy(graph: nx.Graph, data_str):
     edges = []
     for e, data in graph.edges.items():
