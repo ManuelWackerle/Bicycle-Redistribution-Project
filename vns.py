@@ -2,6 +2,7 @@
 Implementations of the variable neighbourhood search based on the article "Variable Neighbourhood Search: basics and
 variants, by P Hansen et al.
 """
+import random
 
 import networkx as nx
 from copy import deepcopy
@@ -329,6 +330,20 @@ def get_one_one_neighbours_swaps(full_route, graph):
         swap_operations.append([stop_a, stop_b])
     return swap_operations
 
+def get_one_one_neighbours_swaps_rand(full_route, graph):
+    swap_operations = []
+    for stop_a, station_a in enumerate(full_route):
+        if station_a == '0':
+            continue
+        # return the closest neighbor station and find its stop
+        station_b = random.choice(full_route)
+        if station_b == '0':
+            continue
+        stop_b = search_stop_of_station(full_route, station_b)
+
+        swap_operations.append([stop_a, stop_b])
+    return swap_operations
+
 def swap_one_one_chained(problem, neighbor_search_limit = 5):
     graph = problem.model
     problem_modified = deepcopy(problem)
@@ -345,7 +360,7 @@ def swap_one_one_chained(problem, neighbor_search_limit = 5):
 
     vehicles_modified = deepcopy(vehicles_initial)
     vehicles_best = deepcopy(vehicles_initial)
-    swap_operations = get_one_one_neighbours_swaps(full_route_initial, graph)
+    swap_operations = get_one_one_neighbours_swaps_rand(full_route_initial, graph)
 
     for key, swap_operation in enumerate(swap_operations):
         # print(full_route_initial)
