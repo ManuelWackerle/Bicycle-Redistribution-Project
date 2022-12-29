@@ -31,13 +31,13 @@ from vns import (
 # Create a list of all files that we want to test.
 instances_dir = os.path.relpath('..\\..\\Problem Instances', os.path.dirname(os.path.abspath(os.getcwd())))
 instances_to_test = os.listdir(instances_dir)
-print(instances_to_test)
 
 # We don't consider the whole dataset for the test.
 instances_to_test.remove("felix_data.csv")
 instances_to_test.remove("sample_graph_04.csv")
 instances_to_test.remove("sample_graph_01.csv")
 instances_to_test.remove("sample_graph_01_edited.csv")
+instances_to_test.remove("ordered_nodes.csv")
 
 # Set list of all neighbourhood changes to test. The sequential nbh change is treated separately
 list_of_nbh_changes = [change_nbh_sequential, change_nbh_cyclic, change_nbh_pipe]
@@ -82,7 +82,7 @@ for try_num in range(max_tries):
     # Loop over all instances
     for instance in instances_to_test:
         # Load graph
-        graph, node_info = load_graph(os.path.splitext(instance)[0], path=instances_dir)
+        graph, node_info = load_graph(os.path.splitext(instance)[0], path=instances_dir, use_adjacency_matrix=False)
         if graph is None:
             sys.exit("Couldn't create graph")
 
@@ -108,10 +108,12 @@ for try_num in range(max_tries):
 
         # Try sequential change
         start = time.time()
-        distance_hist, time_hist, operation_hist = general_variable_nbh_search(problem, ordered_nbhs, change_nbh=change_nbh_sequential, timeout=120, verbose=0)
+        distance_hist, time_hist, operation_hist = general_variable_nbh_search(problem, ordered_nbhs,
+                                                                               change_nbh=change_nbh_sequential,
+                                                                               timeout=120, verbose=0)
         end = time.time()
-        utils.show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs, change_nbh_name = 'sequential')
-
+        utils.show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs,
+                                     change_nbh_name='sequential')
 
         seq_time[try_num].append(end-start)
         seq_dist[try_num].append(problem.calculate_distances())
@@ -122,7 +124,6 @@ for try_num in range(max_tries):
                                                               problem.calculate_distances() / 1000,
                                                               (-problem.calculate_distances() + initial_distance) /
                                                               initial_distance * 100)) if main_verbose == 1 else None
-
         # Reset the problem.
         problem = problem_copy
 
