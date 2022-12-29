@@ -41,7 +41,7 @@ if __name__ == '__main__':
         skew_param=100, timeout=30, verbose=1)
 
     # problem.display_results()
-    utils.show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs)
+    utils.show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs, change_nbh_name='skewed sequential')
 
     # end1 = time.time()
     #

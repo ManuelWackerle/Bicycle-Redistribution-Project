@@ -3,6 +3,7 @@ The goal of this test is to compare all the types of neighbourhood changes with 
 produce the best results.
 """
 
+import utils
 import os
 import sys
 import time
@@ -107,8 +108,11 @@ for try_num in range(max_tries):
 
         # Try sequential change
         start = time.time()
-        general_variable_nbh_search(problem, ordered_nbhs, change_nbh=change_nbh_sequential, timeout=120, verbose=0)
+        distance_hist, time_hist, operation_hist = general_variable_nbh_search(problem, ordered_nbhs, change_nbh=change_nbh_sequential, timeout=120, verbose=0)
         end = time.time()
+        utils.show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs, change_nbh_name = 'sequential')
+
+
         seq_time[try_num].append(end-start)
         seq_dist[try_num].append(problem.calculate_distances())
         seq_percent[try_num].append(-(problem.calculate_distances()-initial_distance) / initial_distance * 100)
@@ -124,8 +128,10 @@ for try_num in range(max_tries):
 
         # Try cycle change
         start = time.time()
-        general_variable_nbh_search(problem, ordered_nbhs, change_nbh=change_nbh_cyclic, timeout=120, verbose=0)
+        distance_hist, time_hist, operation_hist = general_variable_nbh_search(problem, ordered_nbhs, change_nbh=change_nbh_cyclic, timeout=120, verbose=0)
         end = time.time()
+        utils.show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs, change_nbh_name='cyclic')
+
         cycle_time[try_num].append(end - start)
         cycle_dist[try_num].append(problem.calculate_distances())
         cycle_percent[try_num].append(-(problem.calculate_distances() - initial_distance) / initial_distance * 100)
@@ -141,8 +147,10 @@ for try_num in range(max_tries):
 
         # Try pipe change
         start = time.time()
-        general_variable_nbh_search(problem, ordered_nbhs, change_nbh=change_nbh_pipe, timeout=120, verbose=0)
+        distance_hist, time_hist, operation_hist = general_variable_nbh_search(problem, ordered_nbhs, change_nbh=change_nbh_pipe, timeout=120, verbose=0)
         end = time.time()
+        utils.show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs, change_nbh_name = 'pipe')
+
         pipe_time[try_num].append(end - start)
         pipe_dist[try_num].append(problem.calculate_distances())
         pipe_percent[try_num].append(-(problem.calculate_distances() - initial_distance) / initial_distance * 100)
@@ -159,9 +167,11 @@ for try_num in range(max_tries):
         # Try the skewed neighbourhood change for different skew parameters
         skew_param = 0.1
         start = time.time()
-        general_variable_nbh_search(problem, ordered_nbhs, change_nbh=change_nbh_skewed_sequential,
+        distance_hist, time_hist, operation_hist = general_variable_nbh_search(problem, ordered_nbhs, change_nbh=change_nbh_skewed_sequential,
                                         skew_param=skew_param, verbose=0, timeout=120)
         end = time.time()
+        utils.show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs, change_nbh_name = 'skewed sequential')
+
         skew_seq_time[try_num].append(end-start)
         skew_seq_dist[try_num].append(problem.calculate_distances())
         skew_seq_percent[try_num].append(-(problem.calculate_distances() - initial_distance) / initial_distance * 100)
