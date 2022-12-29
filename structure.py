@@ -6,6 +6,7 @@ from copy import deepcopy
 import networkx as nx
 from utils import bcolors
 from utils import edge_data_as_numpy
+from utils import dict_data_as_numpy
 
 
 class Vehicle(object):
@@ -210,13 +211,111 @@ class ProblemInstance:
         distances = edge_data_as_numpy(self.model, 'dist')
         return distances.mean()
 
+    def intialize_flow_graph(self):
+        # Generate Max Flow graph
+        total_source, total_sink = 0, 0
+        mf_graph = nx.DiGraph()
+        mf_graph.add_node('s')  # source node
+        mf_graph.add_node('t')  # sink node
+        for v, d in self.model.nodes(data='sup'):
+            if d > 0:
+                total_source += d
+                mf_graph.add_edge('s', v, capacity=d)
+            elif d < 0:
+                total_sink -= d
+                mf_graph.add_edge(v, 't', capacity=-d)
+        self.imbalance = total_source
+
+        for l, vehicle in enumerate(self.vehicles):
+            route = vehicle.route()
+            prev_node = 0
+            for r, node in enumerate(route):
+                node_str = "{}-{}".format(l, r)
+                demand = self.model.nodes[node]['sup']
+                if demand > 0:
+                    mf_graph.add_edge(node, node_str)
+                elif demand < 0:
+                    mf_graph.add_edge(node_str, node)
+                if prev_node != 0:
+                    mf_graph.add_edge(prev_node, node_str, capacity=vehicle.capacity())
+                prev_node = node_str
+        self.mf_graph = mf_graph
+
+    def verify_loading_on_swapped_route(self, b1, b2, l1, l2=None,  tolerance=0):
+        l2 = l1 if l2 is None else l2
+        v1, v2 = self.vehicles[l1], self.vehicles[l2]
+        ri, rj = "{}-{}".format(l1, b1), "{}-{}".format(l1, b1 + 1)
+        rk, rl = "{}-{}".format(l2, b2), "{}-{}".format(l2, b2 + 1)
+
+        self.mf_graph.remove_edge(ri, rj)
+        self.mf_graph.remove_edge(rk, rl)
+        if l1 == l2:
+            self.mf_graph.add_edge(ri, rk, capacity=v1.capacity())
+            self.mf_graph.add_edge(rj, rl, capacity=v1.capacity())
+
+            prev = rj
+            for m in range(b1 + 2, b2 + 1):
+                node = "{}-{}".format(l1, m)
+                self.mf_graph.remove_edge(prev, node)
+                self.mf_graph.add_edge(node, prev, capacity=v1.capacity())
+                prev = node
+        else:
+            self.mf_graph.add_edge(ri, rl, capacity=v1.capacity())
+            self.mf_graph.add_edge(rk, rj, capacity=v2.capacity())
+
+            ## uncomment to adjust for different vehicle capacities
+            # if v1.capacity != v2.capacity:
+            #     prev = "{}-{}".format(l1, b1 + 1)
+            #     for m1 in range(b1 + 2, len(v1.route())):
+            #         node = "{}-{}".format(l1, m1)
+            #         self.mf_graph.edges[prev, node]['capacity'] = v2.capacity
+            #         prev = node
+            #     prev = "{}-{}".format(l2, b2 + 1)
+            #     for m2 in range(b2 + 2, len(v2.route())):
+            #         node = "{}-{}".format(l2, m2)
+            #         self.mf_graph.edges[prev, node]['capacity'] = v1.capacity
+            #         prev = node
+
+        # Sovle Max Flow Problem
+        self.allocated, data = nx.maximum_flow(self.mf_graph, 's', 't')
+
+        if self.allocated < self.imbalance - tolerance: #if not sufficiently balanced undo changes to graph
+            self.mf_graph.add_edge(ri, rj, capacity=v1.capacity())
+            self.mf_graph.add_edge(rk, rl, capacity=v2.capacity())
+            if l1 == l2:
+                self.mf_graph.remove_edge(ri, rk)
+                self.mf_graph.remove_edge(rj, rl)
+
+                prev = rj
+                for m in range(b1 + 2, b2 + 1):
+                    node = "{}-{}".format(l1, m)
+                    self.mf_graph.remove_edge(node, prev)
+                    self.mf_graph.add_edge(prev, node, capacity=v1.capacity())
+                    prev = node
+            else:
+                self.mf_graph.remove_edge(ri, rl)
+                self.mf_graph.remove_edge(rk, rj)
+
+                ## uncomment to adjust for different vehicle capacities
+                # if v1.capacity != v2.capacity:
+                #     prev = "{}-{}".format(l1, b1 + 1)
+                #     for m1 in range(b1 + 2, len(v1.route())):
+                #         node = "{}-{}".format(l1, m1)
+                #         self.mf_graph.edges[prev, node]['capacity'] = v1.capacity
+                #         prev = node
+                #     prev = "{}-{}".format(l2, b2 + 1)
+                #     for m2 in range(b2 + 2, len(v2.route())):
+                #         node = "{}-{}".format(l2, m2)
+                #         self.mf_graph.edges[prev, node]['capacity'] = v2.capacity
+                #         prev = node
+
     # def centre_node(self):
     #     """
     #     Finds the node nearest to the centre of the graph (the mean over all node positions)
     #
     #     :return centre_node: the central node of the graph
     #     """
-    #     positions = utils.dict_data_as_numpy(self.node_data, 'pos')
+    #     positions = dict_data_as_numpy(self.node_data, 'pos')
     #     centre = positions.mean(axis=0)
     #     best, centre_node = math.inf, '0'
     #     for n, data in self.node_data.items():

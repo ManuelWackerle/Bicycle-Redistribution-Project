@@ -9,7 +9,7 @@ import time
 from tqdm import tqdm
 import random
 random.seed(8)
-
+from structure import Vehicle, ProblemInstance
 import numpy as np
 
 """
@@ -21,20 +21,22 @@ def neighbourhood_operator ( initial_routes [[]], timeout ) -> list_of_modified_
 """
 
 
-def greedy_routing_v1(prob, source='0', dist_weight=3, tsp_weight=1):
+def greedy_routing_v1(prob, source='0', dist_weight=3, tsp_weight=1, randomness=False):
     """
     Finds a set of vehicle routes with low cost based on a greedy approach
     :param prob: Problem instance that the greedy search should be applied to
-    :param source: Starting node (same for all vehicles in this version)
+    :param source: Start and end node (same for all vehicles in this version)
     :param dist_weight: ratio of movable bikes to distance scoring - the solution is very sensitive to this parameter
     :param tsp_weight: (== 1): ignores tsp solution, (!= 1): use tsp solution to suggest successor nodes by scaling the
     score function
     :modifies vehicle: modifies the vehicle routes and loads
     """
-
     prob.show_header("Searching for routes using basic greedy")
     graph = prob.model.copy()
-    mean = prob.mean_distance()
+    # mean = prob.mean_distance()
+    mean = 15000 #hardcoded for now - just make it a variable in ProblemInstance
+    choice_size = 5
+    choices = list(range(0, choice_size))
 
     # Using a tsp solution to select successor nodes where possible
     successors = {}
@@ -68,6 +70,7 @@ def greedy_routing_v1(prob, source='0', dist_weight=3, tsp_weight=1):
                 load = v.current_load()
                 space = v.capacity() - load
                 curr = v.current_stop()
+                v_scores = [[0] for _ in range(choice_size)]
                 for n in graph.nodes:
                     score, move = 0, 0
                     if n != curr:
@@ -82,9 +85,19 @@ def greedy_routing_v1(prob, source='0', dist_weight=3, tsp_weight=1):
                         if tsp_weight != 1:
                             if curr in successors and n in successors[curr]:
                                 score *= tsp_weight
-                        if score >= next_score:
-                            next_stop, next_move = n, move
-                            next_score = score
+                        if randomness:
+                            if score >= v_scores[0][0]:
+                                v_scores[0] = [score, n, move]
+                                v_scores.sort()
+                        elif score > next_score:
+                            next_score, next_stop, next_move = score, n, move
+                if randomness:
+                    if v_scores[choice_size - 1][0] != 0:
+                        weights = [i[0] ** 3 for i in v_scores]
+                        indx = random.choices(choices, weights)[0]
+                        next_stop = v_scores[indx][1]
+                        next_move = v_scores[indx][2]
+
                 if next_move != 0:
                     v.add_stop(next_stop, load + next_move)
                     graph.nodes[next_stop]['sup'] -= next_move
@@ -105,12 +118,14 @@ def greedy_routing_PILOT(prob):
     pass  # Todo: implement
 
 
-def calculate_loading_MF(prob, start_load=0, source='0'):
+def calculate_loading_MF(prob, source='0', start_load=0):
     """
-    Given a set of vehicle routes, calculates optimal loading instructions for each route using a Maximum flow computation.
+    Given a set of vehicle routes, calculates the optimal loading instructions for each route using a Maximum flow computation.
     Use this function if monotonicity is assumed.
-
-    :return instructions: The instructions for how to load and unload the bicycles.
+    :param prob: Problem instance
+    :param source: Start and end node
+    :param start_load: number of bicycles that
+    :modifies vehilce.loads: The instructions for how to load and unload the bicycles.
     """
 
     # Generate Max Flow graph
@@ -132,23 +147,17 @@ def calculate_loading_MF(prob, start_load=0, source='0'):
             total_sink -= d
             mf_graph.add_edge(v, 't', capacity=-d)
 
-    for l in range(len(prob.vehicles)):
-        v = prob.vehicles[l]
-        path = v.route()
+    for l, vehicle in enumerate(prob.vehicles):
         prev_node = 0
-        for r in range(len(path)):
-            node = path[r]
+        for r, node in enumerate(vehicle.route()):
             node_str = "{}-{}-{}".format(node, l, r)
             demand = prob.model.nodes[node]['sup']
-            # if node == source:
-            #     mf_graph.add_edge(node, node_str)
-            #     mf_graph.add_edge(node_str, node)
             if demand > 0:
                 mf_graph.add_edge(node, node_str)
             elif demand < 0:
                 mf_graph.add_edge(node_str, node)
             if prev_node != 0:
-                mf_graph.add_edge(prev_node, node_str, capacity=v.capacity())
+                mf_graph.add_edge(prev_node, node_str, capacity=vehicle.capacity())
             prev_node = node_str
     prob.show_info("Graph generated with {n} nodes and {e} edges. Source flow: {s}, Sink flow: {t}"
                    .format(n=len(mf_graph.nodes), e=len(mf_graph.edges), s=total_source, t=total_sink))
@@ -161,7 +170,6 @@ def calculate_loading_MF(prob, start_load=0, source='0'):
         prob.imbalance = -1
 
     # This is where the magic happens
-    # print(mf_graph.edges.data())
     value, data = nx.maximum_flow(mf_graph, 's', 't')  # , flow_func=nx.algorithms.flow.shortest_augmenting_path()
     #  TODO: investigate this algorithm exactly and see if it can be done better
     prob.allocated = value - start_load
@@ -174,16 +182,16 @@ def calculate_loading_MF(prob, start_load=0, source='0'):
         prob.show_info("Bike allocation is exact. Total allocated bicycles: {}".format(value))
 
     prob.show_header("Generating instructions")
-    for l in range(len(prob.vehicles)):
+    for l, vehicle in enumerate(prob.vehicles):
         loads = []
-        path = prob.vehicles[l].route()
-        for r in range(len(path) - 1):
-            node = path[r]
-            next = path[r + 1]
+        path = vehicle.route()
+        prev = path[0]
+        for r, node in enumerate(path[1:], 1):
+            prev_str = "{}-{}-{}".format(prev, l, r - 1)
             node_str = "{}-{}-{}".format(node, l, r)
-            next_str = "{}-{}-{}".format(next, l, r + 1)
-            loads.append(data[node_str][next_str])
-        prob.vehicles[l].set_loads(loads)
+            loads.append(data[prev_str][node_str])
+            prev = node
+        vehicle.set_loads(loads)
 
 
 def remove_unused_stops(prob):
@@ -228,16 +236,14 @@ def intra_two_opt(prob, tolerance=0):
 
     original_vehicles = deepcopy(prob.vehicles)
     out = []
-    for l in range(len(prob.vehicles)):
-        # print(prob.vehicles[l].route())
-        v = prob.vehicles[l]
+    for l, v in enumerate(prob.vehicles):
         out.append(v)
         swaps[l].sort(reverse=True)
         mn, mx = len(v.route()) + 1, -1
         route = deepcopy(v.route())
         for s in range(len(swaps[l])):
             _, b1, b2 = swaps[l][s]
-            if b2 < mn - 1 or mx + 1 < b1:
+            if b2 < mn - 1 or mx + 1 < b1:  # ignore interfering swaps
                 v.set_route(route[:b1 + 1] + route[b2:b1:-1] + route[b2 + 1:])
                 calculate_loading_MF(prob)
                 if prob.allocated >= prob.imbalance - tolerance:
@@ -248,12 +254,53 @@ def intra_two_opt(prob, tolerance=0):
     prob.vehicles = original_vehicles
     return out
 
+def intra_or_opt(prob, tolerance=0):
+    swaps = []
+    for l, v in enumerate(prob.vehicles):
+        swaps.append([])
+        route = v.route()
+        b1, b2 = 0, 0
+        for s1 in range(1, len(route) - 4):
+            ri, r, rj = route[s1 - 1], route[s1], route[s1 + 1]
+            best, value, new_value = 0, 0, 0
+            for s2 in range(s1 + 2, len(route) - 2):
+                rk, rl = route[s2], route[s2 + 1]
+                if ri != rj and r != rk and r != rl:
+                    dist_old = prob.model.edges[ri, r]['dist'] + prob.model.edges[r, rj]['dist'] + prob.model.edges[rk, rl]['dist']
+                    dist_new = prob.model.edges[rk, r]['dist'] + prob.model.edges[r, rl]['dist'] + prob.model.edges[ri, rj]['dist']
+                    diff = dist_old - dist_new
+                    if diff > best:
+                        best = diff
+                        b1, b2 = s1, s2
+            if best > 0:
+                swaps[l].append([best, b1, b2])
+
+    original_vehicles = deepcopy(prob.vehicles)
+    out = []
+    for l, v in enumerate(prob.vehicles):
+        # print(prob.vehicles[l].route())
+        out.append(v)
+        swaps[l].sort(reverse=True)
+        mn, mx = len(v.route()) + 1, -1
+        route = deepcopy(v.route())
+        for s in range(len(swaps[l])):
+            _, b1, b2 = swaps[l][s]
+            if b2 < mn - 1 or mx + 1 < b1:  # ignore interfering swaps
+                v.set_route(route[:b1] + route[b1 + 1:b2 + 1] + [route[b1]] + route[b2 + 1:])
+                calculate_loading_MF(prob)
+                if prob.allocated >= prob.imbalance - tolerance:
+                    route = deepcopy(v.route())
+                    mn, mx = min(b1, mn), max(b2, mx)
+                else:
+                    v.set_route(route)
+    prob.vehicles = original_vehicles
+    return out
 
 def inter_two_opt(prob, tolerance=0):
     swaps = []
     clip = 5
     for l1, v1 in enumerate(prob.vehicles):
-        route1 = prob.vehicles[l1].route()
+        route1 = v1.route()
         for l2 in range(l1 + 1, len(prob.vehicles)):
             route2 = prob.vehicles[l2].route()
             r1, r2, b1, b2 = 0, 0, 0, 0
@@ -297,6 +344,94 @@ def inter_two_opt(prob, tolerance=0):
     for v in prob.vehicles:
         out.append(v)
     prob.vehicles = original_vehicles
+    return out
+
+def intra_two_opt_v2(prob:ProblemInstance, tolerance=0):
+    """
+    Searches for intra two-opt switches that provide a decrease in route length
+    param prob: Problem instance
+    param tolerance: rebalancing tolerance allowed
+
+    return swaps: array of possible swaps. A swap is given by [<distance improved>, <swap index 1>, <swap index 2>]
+    """
+
+    swaps = []
+    for l, v in enumerate(prob.vehicles):
+        swaps.append([])
+        route = v.route()
+        b1, b2 = 0, 0
+        for s1 in range(1, len(route) - 4):
+            ri, rj = route[s1], route[s1 + 1]
+            best, dist_old, dist_new = 0, 0, 0
+            for s2 in range(s1 + 2, len(route) - 2):
+                rk, rl = route[s2], route[s2 + 1]
+                if ri != rk and ri != rl and rj != rk and rj != rl:
+                    dist_old = prob.model.edges[ri, rj]['dist'] + prob.model.edges[rk, rl]['dist']
+                    dist_new = prob.model.edges[ri, rk]['dist'] + prob.model.edges[rj, rl]['dist']
+                    diff = dist_old - dist_new
+                    if diff > best:
+                        best = diff
+                        b1, b2 = s1, s2
+            if best > 0:
+                swaps[l].append([best, b1, b2])
+
+    prob.intialize_flow_graph()
+    out = deepcopy(prob.vehicles)
+    for l, v in enumerate(prob.vehicles):
+        swaps[l].sort(reverse=True)
+        mn, mx = len(v.route()) + 1, -1
+        for s in range(len(swaps[l])):
+            _, b1, b2 = swaps[l][s]
+            if b2 < mn - 1 or mx + 1 < b1: #ignore interfering swaps
+                prob.verify_loading_on_swapped_route(b1, b2, l, tolerance=tolerance)
+                if prob.allocated >= prob.imbalance - tolerance:
+                    vout = out[l]
+                    vout.set_route(vout.route()[:b1 + 1] + vout.route()[b2:b1:-1] + vout.route()[b2 + 1:])
+                    mn, mx = min(b1, mn), max(b2, mx)
+    return out
+
+
+def inter_two_opt_v2(prob:ProblemInstance, tolerance=0):
+    swaps = []
+    clip = 5
+    for l1, v1 in enumerate(prob.vehicles):
+        route1 = v1.route()
+        for l2 in range(l1 + 1, len(prob.vehicles)):
+            route2 = prob.vehicles[l2].route()
+            r1, r2, b1, b2 = 0, 0, 0, 0
+            best, dist_old, dist_new = 0, 0, 0
+            for s1 in range(clip, len(route1) - clip):
+                ri, rj = route1[s1], route1[s1 + 1]
+                for s2 in range(s1 - clip, min(s1 + clip, len(route2) - 1)):
+                    rk, rl = route2[s2], route2[s2 + 1]
+                    if ri != rk and ri != rl and rj != rk and rj != rl:
+                        dist_old = prob.model.edges[ri, rj]['dist'] + prob.model.edges[rk, rl]['dist']
+                        dist_new = prob.model.edges[ri, rl]['dist'] + prob.model.edges[rk, rj]['dist']
+                        diff = dist_old - dist_new
+                        if diff > best:
+                            best = diff
+                            r1, r2, b1, b2 = l1, l2, s1, s2
+            if best > 0:
+                swaps.append([best, r1, r2, b1, b2])
+
+
+    prob.intialize_flow_graph()
+    swaps.sort(reverse=True)
+    used = set()
+    out = deepcopy(prob.vehicles)
+    for s in swaps:
+        _, l1, l2, b1, b2 = s
+        if l1 not in used and l2 not in used:
+            # Todo, implement index change tracking so that the other swaps can also be used and delete this check
+            prob.verify_loading_on_swapped_route(b1, b2, l1, l2, tolerance=tolerance)
+            if prob.allocated >= prob.imbalance - tolerance:
+                v1, v2 = out[l1], out[l2]
+                v1_new = v1.route()[:b1 + 1] + v2.route()[b2 + 1:]
+                v2_new = v2.route()[:b2 + 1] + v1.route()[b1 + 1:]
+                v1.set_route(v1_new)
+                v2.set_route(v2_new)
+                used.add(l1)
+                used.add(l2)
     return out
 
 
@@ -594,7 +729,6 @@ def change_nbh_skewed_sequential(problem_instance, modified_vehicles: [], nbh, s
         nbh = nbh + 1
         print(nbh) if verbose == 1 else None
     return nbh
-
 
 def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=change_nbh_sequential,
                                 timeout=10, skew_param=10, verbose=0):
