@@ -4,6 +4,9 @@ import pickle
 import numpy as np
 import random
 import plotly.graph_objects as go
+import os
+import datetime
+import time
 from os.path import exists
 
 class bcolors:
@@ -203,6 +206,39 @@ def save_object(item, save_as="pickle_file"):
 
 def extract_saved_object(file_name):
     return pickle.load( open( "Saved/" + file_name + ".p", "rb"))
+
+
+def show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs, change_nbh_name):
+    fig = plt.figure(figsize=(9, 6))
+    get_colors = lambda n: ["#%06x" % random.randint(0, 0xFFFFFF) for _ in range(n)]
+    # colors = ['c', 'r', 'y', 'm', 'g', 'b', 'w']
+    distance_hist = [x/1000 for x in distance_hist]
+    operation_dict = {k:[[], []] for k in set(operation_hist)}
+
+    for d, t, o in zip(distance_hist, time_hist, operation_hist):
+        operation_dict[o][0].append(t)
+        operation_dict[o][1].append(d)
+
+    plt.plot(time_hist, distance_hist, color='lightgray')
+
+    # colors = get_colors(len(ordered_nbhs))
+    colors = ['c', 'r', 'y', 'm', 'g', 'b', 'w']
+
+    for k,v in operation_dict.items():
+        if k >= len(ordered_nbhs):
+            continue
+
+        plt.plot(v[0], v[1], color=colors[k], marker='o', linestyle='None', label=ordered_nbhs[k].__name__)
+
+    plt.xlabel('computational time [s]')
+    plt.ylabel('distance [km]')
+    plt.legend(title='Operation where:')
+    plt.title('improvement of distance with ' + change_nbh_name + ' neighborhood search')
+    now = datetime.datetime.now()
+    print('Plot generated: ' + now.strftime("%d-%m-%Y_%H-%M-%S"))
+    fig.savefig(str(os.getcwd()) + '\imp_gr_' + now.strftime("%d-%m-%Y_%H-%M-%S"))
+    time.sleep(1)
+    # plt.show()
 
 """
 route_to_distance: compute total distance of new routes.

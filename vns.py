@@ -559,7 +559,8 @@ def remove_and_insert_station(problem_instance):
     """
     copied_problem_instance = deepcopy(problem_instance)
 
-    for removed_vehicles in tqdm(remove_one_station_generator(copied_problem_instance.vehicles, at_random=True)):
+    # for removed_vehicles in tqdm(remove_one_station_generator(copied_problem_instance.vehicles, at_random=True)):
+    for removed_vehicles in remove_one_station_generator(copied_problem_instance.vehicles, at_random=True):
         unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, removed_vehicles)
         if not unbalanced_stations:
             # if removal neighbor routes are possibly balanced, return them
@@ -745,6 +746,9 @@ def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=c
 
     start_time = time.time()
     nbh_index = 0
+    distance_hist = [problem_instance.calculate_distances(), ]
+    time_hist = [0, ]
+    operation_hist = [0, ]
 
     while nbh_index < len(ordered_nbhs) and time.time() < start_time + timeout:
         new_vehicle_routes = ordered_nbhs[nbh_index](problem_instance)
@@ -764,6 +768,12 @@ def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=c
 
         elif change_nbh == change_nbh_skewed_sequential:
             nbh_index = change_nbh_skewed_sequential(problem_instance, new_vehicle_routes, nbh_index, skew_param,
-                                                    verbose)
+                                                     verbose)
         else:
             nbh_index = change_nbh(problem_instance, new_vehicle_routes, nbh_index, verbose)
+        
+        distance_hist.append(problem_instance.calculate_distances())
+        time_hist.append(time.time()-start_time)
+        operation_hist.append(nbh_index)
+    
+    return distance_hist, time_hist, operation_hist
