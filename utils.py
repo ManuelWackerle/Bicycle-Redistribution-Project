@@ -202,6 +202,25 @@ def save_object(item, save_as="pickle_file"):
 def extract_saved_object(file_name):
     return pickle.load( open( "Saved/" + file_name + ".p", "rb"))
 
+
+def show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs):
+    colors = ['c', 'r', 'y', 'm', 'g', 'b', 'w']
+    distance_hist = [x/1000 for x in distance_hist]
+    operation_dict = {k:[[], []] for k in set(operation_hist)}
+    for d, t, o in zip(distance_hist, time_hist, operation_hist):
+        operation_dict[o][0].append(t)
+        operation_dict[o][1].append(d)
+
+    plt.plot(time_hist, distance_hist, color='lightgray')
+    for k,v in operation_dict.items():
+        plt.plot(v[0], v[1], color=colors[k], marker='.', linestyle='None', label=ordered_nbhs[k].__name__)
+    
+    plt.xlabel('computational time [s]')
+    plt.ylabel('distance [km]')
+    plt.legend(title='Operation where:')
+    plt.title('improvement by VNS')
+    plt.show()
+
 """
 route_to_distance: compute total distance of new routes.
 INPUT

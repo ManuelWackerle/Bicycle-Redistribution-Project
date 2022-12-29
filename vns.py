@@ -613,6 +613,9 @@ def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=c
 
     start_time = time.time()
     nbh_index = 0
+    distance_hist = [problem_instance.calculate_distances(), ]
+    time_hist = [0, ]
+    operation_hist = [0, ]
 
     while nbh_index < len(ordered_nbhs) and time.time() < start_time + timeout:
         new_vehicle_routes = ordered_nbhs[nbh_index](problem_instance)
@@ -635,3 +638,9 @@ def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=c
                                                      verbose)
         else:
             nbh_index = change_nbh(problem_instance, new_vehicle_routes, nbh_index, verbose)
+        
+        distance_hist.append(problem_instance.calculate_distances())
+        time_hist.append(time.time()-start_time)
+        operation_hist.append(nbh_index)
+    
+    return distance_hist, time_hist, operation_hist

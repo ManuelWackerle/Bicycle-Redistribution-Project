@@ -35,10 +35,13 @@ if __name__ == '__main__':
     vns.greedy_routing_v1(problem)
     # problem.display_results(False)
 
-    ordered_nbhs = [vns.inter_two_opt, vns.intra_two_opt]
-    vns.general_variable_nbh_search(problem, ordered_nbhs, change_nbh=vns.change_nbh_skewed_sequential, skew_param=100,
-                                    timeout=120, verbose=1)
+    ordered_nbhs = [vns.inter_two_opt, vns.intra_two_opt, vns.remove_and_insert_station]
+    distance_hist, time_hist, operation_hist = vns.general_variable_nbh_search(
+        problem, ordered_nbhs, change_nbh=vns.change_nbh_skewed_sequential,
+        skew_param=100, timeout=30, verbose=1)
+
     # problem.display_results()
+    utils.show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs)
 
     # end1 = time.time()
     #
