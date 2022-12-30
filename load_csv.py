@@ -39,7 +39,6 @@ def load_graph(graph_name, path=None, use_adjacency_matrix=True, truncate_after=
     else:
         data = csv.reader(open(os.path.join(path, graph_name + '.csv'), "r"))
 
-
     data_drop = False
     node_data = {}
     count, row_count, total_supply = 0, 0, 0
@@ -51,7 +50,9 @@ def load_graph(graph_name, path=None, use_adjacency_matrix=True, truncate_after=
             break
         _, bin_id, supply_str, lat_str, long_str = row
         supply, x, y = int(supply_str), float(long_str), float(lat_str)
-        if munich_long[0] < x < munich_long[1] and munich_lat[0] < y < munich_lat[1] and (not use_adjacency_matrix or bin_id in adjacency_dict):
+        
+        if munich_long[0] < x < munich_long[1] and munich_lat[0] < y < munich_lat[1] \
+            and not use_adjacency_matrix or bin_id in adjacency_dict:
             total_supply += supply
             graph.add_node(str(count), sup=supply)
             for node, data in node_data.items():
