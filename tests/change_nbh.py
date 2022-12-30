@@ -73,7 +73,7 @@ pipe_percent = [[] for i in range(max_tries)]
 initial_percent = [[] for i in range(max_tries)]
 
 # Select 1 to print intermediate steps, 0 to not print them.
-main_verbose = 0
+main_verbose = 1
 
 # Select True to print pictures
 plotFigures = False
