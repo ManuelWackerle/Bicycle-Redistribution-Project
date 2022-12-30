@@ -7,23 +7,23 @@ import csv
     # num_vehicles = 5
     # capacity = 20
     # min_graph_size = 10
-    # max_graph_size = 300
+    # max_graph_size = 400
     # graph_size_step = 10
     # graph_variations = 10
     # trials_per_graph = 10
-    # run_test(num_vehicles, capacity, min_graph_size, max_graph_size, graph_size_step, graph_variations, trials_per_graph):
+    # run_test(num_vehicles, capacity, min_graph_size, max_graph_size, graph_size_step, graph_variations, trials_per_graph)
 
 
 def run_test(num_vehicles=5,
-             capacity=20,
+             capacity=15,
              min_graph_size=10,
-             max_graph_size=300,
+             max_graph_size=400,
              graph_size_step=10,
              graph_variations=10,
              trials_per_graph=10):
 
     writer = csv.writer(open('Saved/stats_test_01.csv', 'w', newline=''), delimiter=',')
-    writer.writerow(["trial", "greedy_distance", "vns_distance", "improvement", "vns_time"])
+    writer.writerow(["graph_size", "graph_instance", "trial", "greedy_distance", "vns_distance", "improvement", "vns_time"])
     np.random.seed(42)
     count = 0
     for n in range(min_graph_size, max_graph_size + 1, graph_size_step):
@@ -46,15 +46,17 @@ def run_test(num_vehicles=5,
                 vns.greedy_routing_v1(problem, dist_weight=2, randomness=True)
                 greedy_distance = problem.calculate_distances()
 
+
+                ordered_nbhs = [vns.intra_two_opt_v2, vns.inter_two_opt_v2, vns.intra_or_opt, vns.remove_and_insert_station]
                 step1 = time.time()
-                ordered_nbhs = [vns.intra_two_opt_v2, vns.inter_two_opt_v2, vns.intra_or_opt]
-                vns.general_variable_nbh_search(problem, ordered_nbhs, change_nbh=vns.change_nbh_pipe)
+                vns.general_variable_nbh_search(problem, ordered_nbhs, change_nbh=vns.change_nbh_sequential, timeout=300)
+                end1 = time.time()
                 vns.calculate_loading_MF(problem)
                 vns.remove_unused_stops(problem)
                 distance = problem.calculate_distances()
                 # visualize_routes(problem.get_all_routes(), node_info)
 
-                end1 = time.time()
+
                 # problem.display_results(False)
                 problem.reset()
 
@@ -62,7 +64,7 @@ def run_test(num_vehicles=5,
                 vd = round(distance)/1000
                 im = round((1 - distance / greedy_distance) * 100, 1)
                 tm = round(end1 - step1, 3)
-                writer.writerow([trial, gd, vd, im, tm])
+                writer.writerow([n, m, trial, gd, vd, im, tm])
                 gdt += gd
                 vdt += vd
                 imt += im
