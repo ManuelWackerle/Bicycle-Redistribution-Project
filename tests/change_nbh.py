@@ -76,7 +76,7 @@ initial_percent = [[] for i in range(max_tries)]
 main_verbose = 1
 
 # Select True to print pictures
-plotFigures = False
+plotFigures = True
 
 # Prepare CSV file for writing
 fout = open("change_nbh_intermediate_output.csv", "w", newline='')
