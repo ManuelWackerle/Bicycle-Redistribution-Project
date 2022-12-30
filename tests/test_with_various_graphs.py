@@ -5,7 +5,7 @@ import csv
 
     # #Copy this into main
     # num_vehicles = 5
-    # capacity = 20
+    # capacity = 15
     # min_graph_size = 10
     # max_graph_size = 400
     # graph_size_step = 10
@@ -15,9 +15,9 @@ import csv
 
 
 def run_test(num_vehicles=5,
-             capacity=15,
+             capacity=20,
              min_graph_size=10,
-             max_graph_size=400,
+             max_graph_size=100,
              graph_size_step=10,
              graph_variations=10,
              trials_per_graph=10):
@@ -46,8 +46,7 @@ def run_test(num_vehicles=5,
                 vns.greedy_routing_v1(problem, dist_weight=2, randomness=True)
                 greedy_distance = problem.calculate_distances()
 
-
-                ordered_nbhs = [vns.intra_two_opt_v2, vns.inter_two_opt_v2, vns.intra_or_opt, vns.remove_and_insert_station]
+                ordered_nbhs = [vns.intra_two_opt_v2, vns.inter_two_opt_v2, vns.intra_or_opt] #, vns.remove_and_insert_station]
                 step1 = time.time()
                 vns.general_variable_nbh_search(problem, ordered_nbhs, change_nbh=vns.change_nbh_sequential, timeout=300)
                 end1 = time.time()
