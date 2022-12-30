@@ -51,7 +51,7 @@ def load_graph(graph_name, path=None, use_adjacency_matrix=True, truncate_after=
             break
         _, bin_id, supply_str, lat_str, long_str = row
         supply, x, y = int(supply_str), float(long_str), float(lat_str)
-        if munich_long[0] < x < munich_long[1] and munich_lat[0] < y < munich_lat[1] and bin_id in adjacency_dict:
+        if munich_long[0] < x < munich_long[1] and munich_lat[0] < y < munich_lat[1] and (not use_adjacency_matrix or bin_id in adjacency_dict):
             total_supply += supply
             graph.add_node(str(count), sup=supply)
             for node, data in node_data.items():
@@ -73,7 +73,7 @@ def load_graph(graph_name, path=None, use_adjacency_matrix=True, truncate_after=
     return graph, node_data
 
 
-def load_subset_from_ordered_nodes(nodes=100, centeredness=3):
+def load_subset_from_ordered_nodes(nodes=100, centeredness=5):
     """
          Loads a subset of valid nodes as a NetworkX graph.
 
@@ -117,7 +117,7 @@ def load_subset_from_ordered_nodes(nodes=100, centeredness=3):
 
     #Generate Random Graph
     count, total_supply = 0, 0
-    base = abs(centeredness)/32 + 1
+    base = abs(centeredness)/128 + 1
     base = 2 if base > 2 else base #ignore large bases to avoid disappearing values
     sources = nodes//2
     sinks = nodes - sources
