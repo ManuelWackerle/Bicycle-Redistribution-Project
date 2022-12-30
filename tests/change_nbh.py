@@ -40,7 +40,7 @@ instances_to_test.remove("sample_graph_01.csv")
 instances_to_test.remove("sample_graph_01_edited.csv")
 instances_to_test.remove("ordered_nodes.csv")
 
-instances_to_test = ["sample_graph_02.csv"]
+# instances_to_test = ["sample_graph_02.csv"]
 
 # Set list of all neighbourhood changes to test. The sequential nbh change is treated separately
 list_of_nbh_changes = [change_nbh_sequential, change_nbh_cyclic, change_nbh_pipe]
@@ -49,7 +49,7 @@ list_of_nbh_changes = [change_nbh_sequential, change_nbh_cyclic, change_nbh_pipe
 ordered_nbhs = [inter_two_opt, intra_two_opt, remove_and_insert_station]
 
 # Set maximum number of tries
-max_tries = 10
+max_tries = 2
 
 # Initialize arrays for the plot of time
 all_nodes = []
@@ -127,8 +127,8 @@ for try_num in range(max_tries):
                                                                                change_nbh=change_nbh_sequential,
                                                                                timeout=120, verbose=0)
         end = time.time()
-        utils.show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs,
-                                     change_nbh_name='sequential')
+        # utils.show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs,
+        #                              change_nbh_name='sequential')
 
         seq_time[try_num].append(end-start)
         seq_dist[try_num].append(problem.calculate_distances())
@@ -154,7 +154,7 @@ for try_num in range(max_tries):
         start = time.time()
         distance_hist, time_hist, operation_hist = general_variable_nbh_search(problem, ordered_nbhs, change_nbh=change_nbh_cyclic, timeout=120, verbose=0)
         end = time.time()
-        utils.show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs, change_nbh_name='cyclic')
+        # utils.show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs, change_nbh_name='cyclic')
 
         cycle_time[try_num].append(end - start)
         cycle_dist[try_num].append(problem.calculate_distances())
@@ -179,7 +179,7 @@ for try_num in range(max_tries):
         start = time.time()
         distance_hist, time_hist, operation_hist = general_variable_nbh_search(problem, ordered_nbhs, change_nbh=change_nbh_pipe, timeout=120, verbose=0)
         end = time.time()
-        utils.show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs, change_nbh_name = 'pipe')
+        # utils.show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs, change_nbh_name = 'pipe')
 
         pipe_time[try_num].append(end - start)
         pipe_dist[try_num].append(problem.calculate_distances())
@@ -205,7 +205,7 @@ for try_num in range(max_tries):
         distance_hist, time_hist, operation_hist = general_variable_nbh_search(problem, ordered_nbhs, change_nbh=change_nbh_skewed_sequential,
                                         skew_param=skew_param, verbose=0, timeout=120)
         end = time.time()
-        utils.show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs, change_nbh_name = 'skewed sequential')
+        # utils.show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs, change_nbh_name = 'skewed sequential')
 
         skew_seq_time[try_num].append(end-start)
         skew_seq_dist[try_num].append(problem.calculate_distances())
