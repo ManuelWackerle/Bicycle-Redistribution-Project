@@ -142,7 +142,7 @@ class ProblemInstance:
         prev = vehicle.route()[0]
         for s in range(1, len(vehicle.route())):
             if prev == vehicle.route()[s]:
-                vehicle.remove_stop(s)
+                # vehicle.remove_stop(s)
                 print("Warning: same route twice in  sequence - might be a mistake")
             else:
                 dist += self.model.edges[prev, vehicle.route()[s]]['dist']

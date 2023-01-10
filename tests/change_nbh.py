@@ -40,6 +40,9 @@ instances_to_test.remove("sample_graph_01.csv")
 instances_to_test.remove("sample_graph_01_edited.csv")
 instances_to_test.remove("ordered_nodes.csv")
 
+# instances_to_test.remove("sample_graph_04_edited.csv")
+
+
 # instances_to_test = ["sample_graph_02.csv"]
 
 # Set list of all neighbourhood changes to test. The sequential nbh change is treated separately
@@ -49,7 +52,7 @@ list_of_nbh_changes = [change_nbh_sequential, change_nbh_cyclic, change_nbh_pipe
 ordered_nbhs = [inter_two_opt, intra_two_opt, remove_and_insert_station]
 
 # Set maximum number of tries
-max_tries = 2
+max_tries = 10
 
 # Initialize arrays for the plot of time
 all_nodes = []
@@ -230,35 +233,40 @@ fout.close()
 fout = open("change_nbh_average_output.csv", "w", newline='')
 writer = csv.writer(fout)
 
-fout_header = ["Instance", "Change Operator", "Skew parameter", "Avg. Time taken (s)", "Initial Distance(km)",
-               "Avg. Final Distance(km)", "Avg. % of reduction", "Std of % of reduction"]
+# fout_header = ["Instance", "Change Operator", "Skew parameter", "Avg. Time taken (s)", "Initial Distance(km)",
+#                "Avg. Final Distance(km)", "Avg. % of reduction", "Std of % of reduction"]
+fout_header = ["Instance", "Change Operator", "Initial Distance(km)", "Avg. Improvement(km)", "STD of Final Distance(km)"]
 writer.writerow(fout_header)
 
 # Print averages
 
 for index, instance in enumerate(instances_to_test):
     # Print sequential change average
-    fout_data = [instance, change_nbh_sequential.__name__, "NA", np.mean(seq_time, axis=0)[index],
-                 np.mean(initial_distances, axis=0)[index], np.mean(seq_dist, axis=0)[index],
-                 np.mean(seq_percent, axis=0)[index], np.std(seq_percent, axis=0)[index]]
+    fout_data = [instance, change_nbh_sequential.__name__,
+                 np.mean(initial_distances, axis=0)[index] / 1000,
+                 (np.mean(initial_distances, axis=0)[index] - np.mean(seq_dist, axis=0)[index]) / 1000,
+                 np.std(seq_dist, axis=0)[index] / 1000]
     writer.writerow(fout_data)
 
     # Print pipe change average
-    fout_data = [instance, change_nbh_pipe.__name__, "NA", np.mean(pipe_time, axis=0)[index],
-                 np.mean(initial_distances, axis=0)[index], np.mean(pipe_dist, axis=0)[index],
-                 np.mean(pipe_percent, axis=0)[index], np.std(pipe_percent, axis=0)[index]]
+    fout_data = [instance, change_nbh_pipe.__name__,
+                 np.mean(initial_distances, axis=0)[index] / 1000,
+                 (np.mean(initial_distances, axis=0)[index] - np.mean(pipe_dist, axis=0)[index]) / 1000,
+                 np.std(pipe_dist, axis=0)[index] / 1000]
     writer.writerow(fout_data)
 
     # Print cycle change average
-    fout_data = [instance, change_nbh_cyclic.__name__, "NA", np.mean(cycle_time, axis=0)[index],
-                 np.mean(initial_distances, axis=0)[index], np.mean(cycle_dist, axis=0)[index],
-                 np.mean(cycle_percent, axis=0)[index], np.std(cycle_percent, axis=0)[index]]
+    fout_data = [instance, change_nbh_cyclic.__name__,
+                 np.mean(initial_distances, axis=0)[index] / 1000,
+                 (np.mean(initial_distances, axis=0)[index] - np.mean(cycle_dist, axis=0)[index]) / 1000,
+                 np.std(cycle_dist, axis=0)[index] / 1000]
     writer.writerow(fout_data)
 
     # Print skew sequential change average
-    fout_data = [instance, change_nbh_skewed_sequential.__name__, skew_param, np.mean(skew_seq_time, axis=0)[index],
-                 np.mean(initial_distances, axis=0)[index], np.mean(skew_seq_dist, axis=0)[index],
-                 np.mean(skew_seq_percent, axis=0)[index], np.std(skew_seq_percent, axis=0)[index]]
+    fout_data = [instance, change_nbh_skewed_sequential.__name__,
+                 np.mean(initial_distances, axis=0)[index] / 1000,
+                 (np.mean(initial_distances, axis=0)[index] - np.mean(skew_seq_dist, axis=0)[index]) / 1000,
+                 np.std(skew_seq_dist, axis=0)[index] / 1000]
 
     writer.writerow(fout_data)
 
