@@ -465,6 +465,42 @@ def remove_one_station_generator(vehicles, at_random=False):
         candidate[i].set_loads(candidate[i].loads()[:j] + candidate[i].loads()[j+1:])
         yield candidate
 
+def remove_multi_stations_generator(vehicles, at_random=False, num_removal=5):
+    """generate routes by removing multiple stations
+
+    Write
+        N = Number of trucks (=len(self.routes))
+        Ln = Route length (=len(self.routes[n])-1)
+        C = Number of candidates
+    Note
+        Ln depends on n in N. (route length might be different for each vehicles)
+    :return
+        Generator which generates vechiles with the shape (N, Ln) with total number C
+    """
+    idxes = []
+    for i in range(len(vehicles)):
+        if len(vehicles[i].route()) <= 2:
+            # if route length is less than two, it contains only depot
+            continue
+        # ignore index 0 and -1 since both are depot
+        for j in range(1, len(vehicles[i].route())-1):
+            idxes.append([i, j])
+
+    if at_random:
+        random.shuffle(idxes)  # generate at random
+
+    nr = 0
+    candidate = deepcopy(vehicles)
+    for i, j in idxes:
+        if nr < num_removal:
+            candidate[i].set_route(candidate[i].route()[:j] + candidate[i].route()[j+1:])
+            candidate[i].set_loads(candidate[i].loads()[:j] + candidate[i].loads()[j+1:])
+            nr += 1
+        else:
+            yield candidate
+            nr = 0
+            candidate = deepcopy(vehicles)
+
 
 def _get_rebalanced_graph(graph, vehicles):
     """given routes and instructions, returns graph after rebalance
@@ -507,6 +543,37 @@ def insertU_nearest_generator(vehicles, unbalanced_stations, graph):
             # set new load as 0
             vehicle.set_loads(vehicle.loads()[:j] + [0] + vehicle.loads()[j:])
             yield candidate
+
+
+def insertU_nearest_v2(vehicles, unbalanced_stations, graph):
+    """insert unbalanced stations to minimum distance position on each route
+
+    return:
+        Generator which generate insertU candidate
+    """
+    candidate = deepcopy(vehicles)
+    random.shuffle(unbalanced_stations)
+    for u in unbalanced_stations:
+        best_distance = 1e+10  # init
+        bi = 0
+        bj = 0
+        for i, vehicle in enumerate(candidate):
+            route = vehicle.route()
+            if len(route) < 2:
+                continue
+            for j in range(1, len(route) - 1):
+                if route[j-1] == u or route[j] == u:
+                    continue
+                current_distance = graph.edges[route[j-1], u]['dist'] + graph.edges[route[j], u]['dist']
+                if current_distance < best_distance:
+                    best_distance = current_distance
+                    bj = j
+                    bi = i
+
+        candidate[bi].set_route(candidate[bi].route()[:bj] + [u] + candidate[bi].route()[bj:])
+        # set new load as 0
+        candidate[bi].set_loads(candidate[bi].loads()[:bj] + [0] + candidate[bi].loads()[bj:])
+    return candidate
 
 
 def insertU_generator(vehicles, unbalanced_stations, at_random=False):
@@ -570,6 +637,22 @@ def remove_and_insert_station(problem_instance):
             unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, inserted_vehicles)
             if not unbalanced_stations:
                 return inserted_vehicles
+    # if there is no candidate, return original
+    return copied_problem_instance.vehicles
+
+
+def multi_remove_and_insert_station(problem_instance, num_removal=3):
+    copied_problem_instance = deepcopy(problem_instance)
+
+    for removed_vehicles in remove_multi_stations_generator(copied_problem_instance.vehicles, at_random=True, num_removal=num_removal):
+        unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, removed_vehicles)
+        if not unbalanced_stations:
+            # if removal neighbor routes are possibly balanced, return them
+            return removed_vehicles
+        inserted_vehicles = insertU_nearest_v2(removed_vehicles, unbalanced_stations, copied_problem_instance.model.copy())
+        unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, inserted_vehicles)
+        if not unbalanced_stations:
+            return inserted_vehicles
     # if there is no candidate, return original
     return copied_problem_instance.vehicles
 
