@@ -814,6 +814,7 @@ def change_nbh_skewed_sequential(problem_instance, modified_vehicles: [], nbh, s
         print(nbh) if verbose == 1 else None
     return nbh
 
+
 def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=change_nbh_sequential,
                                 timeout=10, skew_param=10, verbose=0):
     """
@@ -860,3 +861,85 @@ def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=c
         operation_hist.append(nbh_index)
     
     return distance_hist, time_hist, operation_hist
+
+
+def large_nbh_search(problem_instance, ordered_large_nbhs: [int], ordered_local_nbhs: [], change_large_nbh=change_nbh_pipe,
+                     change_local_nbh = change_nbh_sequential,
+                     timeout=10, skew_param=10, local_verbose=0, large_verbose=0):
+    """
+    Integrate multiple_remove and insert stations as Large neighbourhood.
+    :param problem_instance: current array of routes for all vehicles
+    :param ordered_large_nbhs: list of number of stations to remove for large neighbourhood operators.
+    :param ordered_local_nbhs: list of ordered local neighbourhood operators
+    :param change_large_nbh: What type of neighbourhood change we consider in the large neighbourhoods
+    :param change_local_nbh: Neighbourhood change type in local improvement phase
+    :param timeout: maximum execution time
+    :param skew_param: see change_nbh_skewed_sequential
+    :param local_verbose: control prints. 1 to print 0 to not print the changes inside the local improvement.
+    :param large_verbose: control prints for change in large neighbourhoods.
+    :return: best route found.
+    """
+
+    start_time = time.time()
+    large_nbh_index = 0
+    first_time = True  # To skip the shake in the first trial
+    # distance_hist = [problem_instance.calculate_distances(), ]
+    # time_hist = [0, ]
+    # operation_hist = [0, ]
+
+    """
+    Outer loop controls the large neighbourhood change. We use the multiple insert and remove neighbourhood with
+    varying number of stations (as given by ordered_large_nbhs) as large neighbourhood operator.
+    
+    Multiple remove insert acts as a large-scale shaking procedure.
+    """
+    while large_nbh_index < len(ordered_large_nbhs) and time.time() < start_time + timeout:
+        if first_time is False:
+            new_vehicle_routes = multi_remove_and_insert_station(problem_instance, ordered_large_nbhs[large_nbh_index])
+        else:
+            new_vehicle_routes = problem_instance.vehicles
+            first_time = False
+
+        calculate_loading_MF(problem_instance)
+        problem_instance.display_results(False) if large_verbose == 1 else None
+
+        """
+        After the initial large neighbourhood shake, we use VND to locally improve the routes.
+        """
+
+        general_variable_nbh_search(problem_instance, ordered_local_nbhs, change_nbh=change_local_nbh,
+                                    timeout=10, skew_param=10, verbose=local_verbose)
+
+        """
+        End of local improvement phase
+        """
+
+        if change_large_nbh == change_nbh_cyclic:
+            distances_old = problem_instance.calculate_distances()
+            large_nbh_index_old = large_nbh_index
+            large_nbh_index = change_nbh_cyclic(problem_instance, new_vehicle_routes, large_nbh_index,
+                                                len(ordered_large_nbhs), verbose=0)
+            if large_verbose == 1 and large_nbh_index < len(ordered_large_nbhs):
+                print("Large neighbourhood change remove ", ordered_large_nbhs[large_nbh_index_old],
+                      "to remove", ordered_large_nbhs[large_nbh_index], "stations")
+            if distances_old == problem_instance.calculate_distances():
+                break
+
+        elif change_large_nbh == change_nbh_skewed_sequential:
+            large_nbh_index_old = large_nbh_index
+            large_nbh_index = change_nbh_skewed_sequential(problem_instance, new_vehicle_routes, large_nbh_index,
+                                                           skew_param, verbose=0)
+            if large_verbose == 1 and large_nbh_index < len(ordered_large_nbhs):
+                print("Large neighbourhood change remove ", ordered_large_nbhs[large_nbh_index_old],
+                      "to remove", ordered_large_nbhs[large_nbh_index], "stations")
+        else:
+            large_nbh_index_old = large_nbh_index
+            large_nbh_index = change_large_nbh(problem_instance, new_vehicle_routes, large_nbh_index, verbose=0)
+            if large_verbose == 1 and large_nbh_index < len(ordered_large_nbhs):
+                print("Large neighbourhood change remove ", ordered_large_nbhs[large_nbh_index_old],
+                      "to remove", ordered_large_nbhs[large_nbh_index], "stations")
+        # distance_hist.append(problem_instance.calculate_distances())
+        # time_hist.append(time.time() - start_time)
+        # operation_hist.append(large_nbh_index)
+
+    # return distance_hist, time_hist, operation_hist
