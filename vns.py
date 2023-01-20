@@ -535,7 +535,8 @@ def remove_worst_meta_generator(vehicles, graph, num_removal=5, mode='worst', me
             distance_to_visit.append(graph.edges[station_pre, station][metric] + graph.edges[station, station_post][metric])
 
     if mode == 'worst':
-        sorting_args = np.argsort(np.array(distance_to_visit))
+        # sort the idxes according to their distance
+        sorting_args = np.argsort(np.array(distance_to_visit))[::-1]
         idxes = np.array(idxes)
         idxes = idxes[sorting_args].tolist()
     elif mode == 'random':
@@ -558,6 +559,8 @@ def remove_worst_meta_generator(vehicles, graph, num_removal=5, mode='worst', me
 
         for i, j in idxes_apply:
             # remove one station per cycle (num_removal stations in total)
+            # instead of removing a station from the list, we just mark it as deleted,
+            # so we don't need to change the indexes of the later removals
             candidate[i].set_route(candidate[i].route()[:j] + ['x'] + candidate[i].route()[j + 1:])
 
         # remove 'x' elements from the routes
