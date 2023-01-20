@@ -502,6 +502,64 @@ def remove_multi_stations_generator(vehicles, at_random=False, num_removal=5):
             candidate = deepcopy(vehicles)
 
 
+def remove_worst_meta_generator(vehicles, graph, num_removal=5, mode='worst', metric='dist', meta_parameter=0.1):
+    """generate routes by removing multiple stations
+
+    Write
+        N = Number of trucks (=len(self.routes))
+        Ln = Route length (=len(self.routes[n])-1)
+        C = Number of candidates
+    Note
+        Ln depends on n in N. (route length might be different for each vehicles)
+    :return
+        Generator which generates vechiles with the shape (N, Ln) with total number C
+    """
+    idxes = []
+    distance_to_visit = []
+
+    candidate = deepcopy(vehicles)
+
+    for i in range(len(vehicles)):
+        if len(vehicles[i].route()) <= 2:
+            # if route length is less than two, it contains only depot
+            continue
+        # ignore index 0 and -1 since both are depot
+        for j in range(1, len(vehicles[i].route())-1):
+            idxes.append([i, j])
+            station = candidate[i].route()[j]
+            station_pre = candidate[i].route()[j-1]
+            station_post = candidate[i].route()[j+1]
+
+            distance_to_visit.append(graph.edges[station_pre, station][metric] + graph.edges[station, station_post][metric])
+
+    if mode == 'worst':
+        sorting_args = np.argsort(np.array(distance_to_visit))
+        idxes = np.array(idxes)
+        idxes = idxes[sorting_args].tolist()
+    elif(mode == 'random'):
+        random.shuffle(idxes)  # generate at random
+
+    nr = 0
+    candidate = deepcopy(vehicles)
+    for i, j in idxes:
+        if nr < num_removal:
+
+            # 'x' means a deleted station, which allow to use the same indexes for further deletions
+            candidate[i].set_route(candidate[i].route()[:j] + ['x'] + candidate[i].route()[j+1:])
+
+            nr += 1
+        else:
+            # remove 'x' elements from the routes
+            for vehicle in candidate:
+                route = vehicle.route()
+                while (route.count('x')):
+                    route.remove('x')
+                vehicle.set_route(route)
+            yield candidate
+            nr = 0
+            candidate = deepcopy(vehicles)
+
+
 def _get_rebalanced_graph(graph, vehicles):
     """given routes and instructions, returns graph after rebalance
     """
@@ -643,8 +701,8 @@ def remove_and_insert_station(problem_instance):
 
 def multi_remove_and_insert_station(problem_instance, num_removal=3):
     copied_problem_instance = deepcopy(problem_instance)
-
-    for removed_vehicles in remove_multi_stations_generator(copied_problem_instance.vehicles, at_random=True, num_removal=num_removal):
+    # for removed_vehicles in remove_multi_stations_generator(copied_problem_instance.vehicles, at_random=True, num_removal=num_removal):
+    for removed_vehicles in remove_worst_meta_generator(copied_problem_instance.vehicles, copied_problem_instance.model.copy(), mode='worst', num_removal=num_removal):
         unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, removed_vehicles)
         if not unbalanced_stations:
             # if removal neighbor routes are possibly balanced, return them
@@ -863,9 +921,10 @@ def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=c
     return distance_hist, time_hist, operation_hist
 
 
-def large_nbh_search(problem_instance, ordered_large_nbhs: [int], ordered_local_nbhs: [], change_large_nbh=change_nbh_pipe,
-                     change_local_nbh = change_nbh_sequential,
-                     timeout=10, skew_param=10, local_verbose=0, large_verbose=0):
+def large_nbh_search(problem_instance, ordered_large_nbhs: [int], ordered_local_nbhs: [],
+                     change_large_nbh=change_nbh_pipe,
+                     change_local_nbh=change_nbh_sequential,
+                     large_timeout=60, timeout=10, skew_param=10, local_verbose=0, large_verbose=0):
     """
     Integrate multiple_remove and insert stations as Large neighbourhood.
     :param problem_instance: current array of routes for all vehicles
@@ -883,18 +942,19 @@ def large_nbh_search(problem_instance, ordered_large_nbhs: [int], ordered_local_
     start_time = time.time()
     large_nbh_index = 0
     first_time = True  # To skip the shake in the first trial
-    # distance_hist = [problem_instance.calculate_distances(), ]
-    # time_hist = [0, ]
-    # operation_hist = [0, ]
-
+    distance_hist = [problem_instance.calculate_distances(), ]
+    time_hist = [0, ]
+    operation_hist = [0, ]
+    time_shake = []
     """
     Outer loop controls the large neighbourhood change. We use the multiple insert and remove neighbourhood with
     varying number of stations (as given by ordered_large_nbhs) as large neighbourhood operator.
-    
+
     Multiple remove insert acts as a large-scale shaking procedure.
     """
-    while large_nbh_index < len(ordered_large_nbhs) and time.time() < start_time + timeout:
+    while large_nbh_index < len(ordered_large_nbhs) and time.time() < start_time + large_timeout:
         if first_time is False:
+            time_shake.append(time.time() - start_time)
             new_vehicle_routes = multi_remove_and_insert_station(problem_instance, ordered_large_nbhs[large_nbh_index])
         else:
             new_vehicle_routes = problem_instance.vehicles
@@ -907,8 +967,12 @@ def large_nbh_search(problem_instance, ordered_large_nbhs: [int], ordered_local_
         After the initial large neighbourhood shake, we use VND to locally improve the routes.
         """
 
-        general_variable_nbh_search(problem_instance, ordered_local_nbhs, change_nbh=change_local_nbh,
-                                    timeout=10, skew_param=10, verbose=local_verbose)
+        distance_hist_local, time_hist_local, operation_hist_local = general_variable_nbh_search(problem_instance,
+                                                                                                 ordered_local_nbhs,
+                                                                                                 change_nbh=change_local_nbh,
+                                                                                                 timeout=timeout,
+                                                                                                 skew_param=10,
+                                                                                                 verbose=local_verbose)
 
         """
         End of local improvement phase
@@ -938,8 +1002,9 @@ def large_nbh_search(problem_instance, ordered_large_nbhs: [int], ordered_local_
             if large_verbose == 1 and large_nbh_index < len(ordered_large_nbhs):
                 print("Large neighbourhood change remove ", ordered_large_nbhs[large_nbh_index_old],
                       "to remove", ordered_large_nbhs[large_nbh_index], "stations")
-        # distance_hist.append(problem_instance.calculate_distances())
-        # time_hist.append(time.time() - start_time)
-        # operation_hist.append(large_nbh_index)
 
-    # return distance_hist, time_hist, operation_hist
+        distance_hist = distance_hist + distance_hist_local
+        time_hist = time_hist + [element + time_hist[-1] for element in time_hist_local]
+        operation_hist = operation_hist + [element + operation_hist[-1] for element in operation_hist_local]
+
+    return distance_hist, time_hist, operation_hist, time_shake
