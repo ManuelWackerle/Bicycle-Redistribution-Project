@@ -502,7 +502,7 @@ def remove_multi_stations_generator(vehicles, at_random=False, num_removal=5):
             candidate = deepcopy(vehicles)
 
 
-def remove_worst_meta_generator(vehicles, graph, num_removal=5, mode='worst', metric='dist', meta_parameter=0.1):
+def remove_worst_meta_generator(vehicles, graph, num_removal=5, mode='worst', metric='dist', meta_parameter=1, timeout=10):
     """generate routes by removing multiple stations
 
     Write
@@ -537,27 +537,58 @@ def remove_worst_meta_generator(vehicles, graph, num_removal=5, mode='worst', me
         idxes = np.array(idxes)
         idxes = idxes[sorting_args].tolist()
     elif(mode == 'random'):
-        random.shuffle(idxes)  # generate at random
+        # uniform distribution
+        meta_parameter = 1
+    else:
+        print(str(mode) + 'mode is not available.')
 
-    nr = 0
     candidate = deepcopy(vehicles)
-    for i, j in idxes:
-        if nr < num_removal:
 
-            # 'x' means a deleted station, which allow to use the same indexes for further deletions
-            candidate[i].set_route(candidate[i].route()[:j] + ['x'] + candidate[i].route()[j+1:])
+    # weighted distribution
+    choose = lambda n, p: int(np.floor(n * np.random.uniform() ** p))
 
-            nr += 1
-        else:
-            # remove 'x' elements from the routes
-            for vehicle in candidate:
-                route = vehicle.route()
-                while (route.count('x')):
-                    route.remove('x')
-                vehicle.set_route(route)
-            yield candidate
-            nr = 0
-            candidate = deepcopy(vehicles)
+    time_start = time.time()
+    while time.time() < time_start + timeout:
+        idxes_copy = deepcopy(idxes)
+        idxes_apply = []
+        for _ in range(num_removal):
+            idxes_apply.append(idxes_copy.pop(choose(len(idxes_copy), meta_parameter)))
+
+        for i, j in idxes_apply:
+            # remove one station per cycle (num_removal stations in total)
+            candidate[i].set_route(candidate[i].route()[:j] + ['x'] + candidate[i].route()[j + 1:])
+
+        # remove 'x' elements from the routes
+        for vehicle in candidate:
+            route = vehicle.route()
+            while (route.count('x')):
+                route.remove('x')
+            vehicle.set_route(route)
+
+        # return a generator of a new set of routes
+        yield candidate
+
+        # reset the candidate
+        candidate = deepcopy(vehicles)
+
+
+    # for i, j in idxes:
+    #     if nr < num_removal:
+    #
+    #         # 'x' means a deleted station, which allow to use the same indexes for further deletions
+    #         candidate[i].set_route(candidate[i].route()[:j] + ['x'] + candidate[i].route()[j+1:])
+    #
+    #         nr += 1
+    #     else:
+    #         # remove 'x' elements from the routes
+    #         for vehicle in candidate:
+    #             route = vehicle.route()
+    #             while (route.count('x')):
+    #                 route.remove('x')
+    #             vehicle.set_route(route)
+    #         yield candidate
+    #         nr = 0
+    #         candidate = deepcopy(vehicles)
 
 
 def _get_rebalanced_graph(graph, vehicles):
