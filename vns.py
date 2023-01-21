@@ -856,11 +856,11 @@ def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=c
                                                      verbose)
         else:
             nbh_index = change_nbh(problem_instance, new_vehicle_routes, nbh_index, verbose)
-        
+
         distance_hist.append(problem_instance.calculate_distances())
         time_hist.append(time.time()-start_time)
         operation_hist.append(nbh_index)
-    
+
     return distance_hist, time_hist, operation_hist
 
 
@@ -874,7 +874,8 @@ def large_nbh_search(problem_instance, ordered_large_nbhs: [int], ordered_local_
     :param ordered_local_nbhs: list of ordered local neighbourhood operators
     :param change_large_nbh: What type of neighbourhood change we consider in the large neighbourhoods
     :param change_local_nbh: Neighbourhood change type in local improvement phase
-    :param timeout: maximum execution time
+    :param timeout: maximum execution time of the VNS loop
+    :param large_timeout: maximum total execution time.
     :param skew_param: see change_nbh_skewed_sequential
     :param local_verbose: control prints. 1 to print 0 to not print the changes inside the local improvement.
     :param large_verbose: control prints for change in large neighbourhoods.
@@ -888,6 +889,7 @@ def large_nbh_search(problem_instance, ordered_large_nbhs: [int], ordered_local_
     time_hist = [0, ]
     operation_hist = [0, ]
     time_shake = []
+    shake_effect = []
     """
     Outer loop controls the large neighbourhood change. We use the multiple insert and remove neighbourhood with
     varying number of stations (as given by ordered_large_nbhs) as large neighbourhood operator.
@@ -896,8 +898,12 @@ def large_nbh_search(problem_instance, ordered_large_nbhs: [int], ordered_local_
     """
     while large_nbh_index < len(ordered_large_nbhs) and time.time() < start_time + large_timeout:
         if first_time is False:
+            # For debugging purposes, check the effect of the Large Neighbourhood operator. When and what it does.
             time_shake.append(time.time() - start_time)
+            old_routes = problem_instance.get_all_routes()
             new_vehicle_routes = multi_remove_and_insert_station(problem_instance, ordered_large_nbhs[large_nbh_index])
+            problem_instance.vehicles = new_vehicle_routes
+            shake_effect.append(old_routes == problem_instance.get_all_routes())
         else:
             new_vehicle_routes = problem_instance.vehicles
             first_time = False
@@ -949,4 +955,4 @@ def large_nbh_search(problem_instance, ordered_large_nbhs: [int], ordered_local_
         time_hist = time_hist + [element + time_hist[-1] for element in time_hist_local]
         operation_hist = operation_hist + [element + operation_hist[-1] for element in operation_hist_local]
 
-    return distance_hist, time_hist, operation_hist, time_shake
+    return distance_hist, time_hist, operation_hist, time_shake, shake_effect
