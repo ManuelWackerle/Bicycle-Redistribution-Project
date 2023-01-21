@@ -40,7 +40,7 @@ problem_copy = deepcopy(problem)
 initial_dist = problem.calculate_distances()
 
 # Define local neighbours
-ordered_nbhs = [vns.inter_two_opt, vns.intra_two_opt, vns.intra_or_opt, vns.remove_and_insert_station]
+ordered_nbhs = [vns.inter_two_opt, vns.intra_two_opt, vns.intra_or_opt, vns.multi_remove_and_insert_station]
 destruction_degrees = [0.05, 0.07, 0.10, 0.13]
 ordered_large_nbhs = [int(np.floor(instance_size * element)) for element in destruction_degrees]
 

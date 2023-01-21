@@ -8,7 +8,6 @@ from copy import deepcopy
 import time
 from tqdm import tqdm
 import random
-
 random.seed(8)
 from structure import Vehicle, ProblemInstance
 import numpy as np
@@ -36,7 +35,7 @@ def greedy_routing_v1(prob, source='0', dist_weight=3, tsp_weight=1, randomness=
     prob.show_header("Searching for routes using basic greedy")
     graph = prob.model.copy()
     # mean = prob.mean_distance()
-    mean = 15000  # hardcoded for now - just make it a variable in ProblemInstance
+    mean = 15000 #hardcoded for now - just make it a variable in ProblemInstance
     choice_size = 5
     choices = list(range(0, choice_size))
 
@@ -203,7 +202,7 @@ def remove_unused_stops(prob):
     for v in prob.vehicles:
         remove = []
         prev_load = 0
-        for s in range(1, len(v.route()) - 1):  # ignore first and last stops (source)
+        for s in range(1, len(v.route())-1):  # ignore first and last stops (source)
             load = v.loads()[s]
             if load == prev_load:
                 remove.append(s)
@@ -256,7 +255,6 @@ def intra_two_opt(prob, tolerance=0):
     prob.vehicles = original_vehicles
     return out
 
-
 def intra_or_opt(prob, tolerance=0):
     swaps = []
     for l, v in enumerate(prob.vehicles):
@@ -269,10 +267,8 @@ def intra_or_opt(prob, tolerance=0):
             for s2 in range(s1 + 2, len(route) - 2):
                 rk, rl = route[s2], route[s2 + 1]
                 if ri != rj and r != rk and r != rl:
-                    dist_old = prob.model.edges[ri, r]['dist'] + prob.model.edges[r, rj]['dist'] + \
-                               prob.model.edges[rk, rl]['dist']
-                    dist_new = prob.model.edges[rk, r]['dist'] + prob.model.edges[r, rl]['dist'] + \
-                               prob.model.edges[ri, rj]['dist']
+                    dist_old = prob.model.edges[ri, r]['dist'] + prob.model.edges[r, rj]['dist'] + prob.model.edges[rk, rl]['dist']
+                    dist_new = prob.model.edges[rk, r]['dist'] + prob.model.edges[r, rl]['dist'] + prob.model.edges[ri, rj]['dist']
                     diff = dist_old - dist_new
                     if diff > best:
                         best = diff
@@ -300,7 +296,6 @@ def intra_or_opt(prob, tolerance=0):
                     v.set_route(route)
     prob.vehicles = original_vehicles
     return out
-
 
 def inter_two_opt(prob, tolerance=0):
     swaps = []
@@ -389,7 +384,7 @@ def intra_two_opt_v2(prob: ProblemInstance, tolerance=0):
         mn, mx = len(v.route()) + 1, -1
         for s in range(len(swaps[l])):
             _, b1, b2 = swaps[l][s]
-            if b2 < mn - 1 or mx + 1 < b1:  # ignore interfering swaps
+            if b2 < mn - 1 or mx + 1 < b1: #ignore interfering swaps
                 prob.verify_loading_on_swapped_route(b1, b2, l, tolerance=tolerance)
                 if prob.allocated >= prob.imbalance - tolerance:
                     vout = out[l]
@@ -398,7 +393,7 @@ def intra_two_opt_v2(prob: ProblemInstance, tolerance=0):
     return out
 
 
-def inter_two_opt_v2(prob: ProblemInstance, tolerance=0):
+def inter_two_opt_v2(prob:ProblemInstance, tolerance=0):
     swaps = []
     clip = 5
     for l1, v1 in enumerate(prob.vehicles):
@@ -421,6 +416,7 @@ def inter_two_opt_v2(prob: ProblemInstance, tolerance=0):
             if best > 0:
                 swaps.append([best, r1, r2, b1, b2])
 
+
     prob.intialize_flow_graph()
     swaps.sort(reverse=True)
     used = set()
@@ -441,6 +437,21 @@ def inter_two_opt_v2(prob: ProblemInstance, tolerance=0):
     return out
 
 
+def _delete_consecutive_same_station(vehicles):
+    for k, vehicle in enumerate(vehicles):
+        route = vehicle.route()
+        N = len(route)
+        if N < 5:
+            print(f"Warning! The vehicle {k} has only {N} stations in the route.")
+        remove_idxes = set()
+        for i, station in enumerate(route):
+            if i < N-1 and station == route[i+1]:
+                remove_idxes.add(i)
+        vehicle.set_route([s for i, s in enumerate(route) if i not in remove_idxes])
+        vehicle.set_loads([l for i, l in enumerate(vehicle.loads()) if i not in remove_idxes])
+    return vehicles
+
+
 def remove_one_station_generator(vehicles, at_random=False):
     """generate routes by removing one station
 
@@ -459,7 +470,7 @@ def remove_one_station_generator(vehicles, at_random=False):
             # if route length is less than two, it contains only depot
             continue
         # ignore index 0 and -1 since both are depot
-        for j in range(1, len(vehicles[i].route()) - 1):
+        for j in range(1, len(vehicles[i].route())-1):
             idxes.append([i, j])
 
     if at_random:
@@ -467,8 +478,8 @@ def remove_one_station_generator(vehicles, at_random=False):
 
     for i, j in idxes:
         candidate = deepcopy(vehicles)
-        candidate[i].set_route(candidate[i].route()[:j] + candidate[i].route()[j + 1:])
-        candidate[i].set_loads(candidate[i].loads()[:j] + candidate[i].loads()[j + 1:])
+        candidate[i].set_route(candidate[i].route()[:j] + candidate[i].route()[j+1:])
+        candidate[i].set_loads(candidate[i].loads()[:j] + candidate[i].loads()[j+1:])
         yield candidate
 
 
@@ -485,12 +496,14 @@ def remove_multi_stations_generator(vehicles, at_random=False, num_removal=5):
         Generator which generates vechiles with the shape (N, Ln) with total number C
     """
     idxes = []
-    for i in range(len(vehicles)):
-        if len(vehicles[i].route()) <= 2:
+    N = len(vehicles)
+    for i in range(N):
+        if len(vehicles[i].route()) <= 5:
             # if route length is less than two, it contains only depot
+            # if route is too short, don't remove from that route.
             continue
         # ignore index 0 and -1 since both are depot
-        for j in range(1, len(vehicles[i].route()) - 1):
+        for j in range(1, len(vehicles[i].route())-1):
             idxes.append([i, j])
 
     if at_random:
@@ -498,10 +511,49 @@ def remove_multi_stations_generator(vehicles, at_random=False, num_removal=5):
 
     nr = 0
     candidate = deepcopy(vehicles)
+    removal_idxes = [[] for _ in range(N)]
     for i, j in idxes:
         if nr < num_removal:
-            candidate[i].set_route(candidate[i].route()[:j] + candidate[i].route()[j + 1:])
-            candidate[i].set_loads(candidate[i].loads()[:j] + candidate[i].loads()[j + 1:])
+            removal_idxes[i].append(j)
+            nr += 1
+        else:
+            for n in range(N):
+                original_route = candidate[n].route()
+                idxes = [
+                    k for k, station in enumerate(original_route)
+                    if k not in removal_idxes[n]
+                ]
+                candidate[n].set_route([station for k, station in enumerate(original_route) if k in idxes])
+                candidate[n].set_loads([load for k, load in enumerate(candidate[n].loads()) if k in idxes])
+            # candidate[i].set_route(candidate[i].route()[:j] + candidate[i].route()[j+1:])
+            # candidate[i].set_loads(candidate[i].loads()[:j] + candidate[i].loads()[j+1:])
+            candidate = _delete_consecutive_same_station(candidate)
+            yield candidate
+            nr = 0
+            removal_idxes = [[] for _ in range(N)]
+            candidate = deepcopy(vehicles)
+
+
+def remove_multi_stations_generator_v2(problem_instance, num_removal=5):
+    """generate routes by removing multiple stations
+    """
+    vehicles = problem_instance.vehicles
+    candidate = deepcopy(vehicles)
+    longest_distance = 0
+    bi = 0
+    for i, vehicle in enumerate(vehicles):
+        current_distance = problem_instance.calculate_distance(vehicle)
+        if current_distance > longest_distance:
+            longest_distance = current_distance
+            bi = i
+
+    station_idxes = list(range(1, len(vehicles[bi])))
+    random.shuffle(station_idxes)
+    nr = 0
+    for j in station_idxes:
+        if nr < num_removal:
+            candidate[bi].set_route(candidate[bi].route()[:j] + candidate[i].route()[j+1:])
+            candidate[bi].set_loads(candidate[bi].loads()[:j] + candidate[i].loads()[j+1:])
             nr += 1
         else:
             yield candidate
@@ -720,7 +772,7 @@ def _get_rebalanced_graph(graph, vehicles):
     """
     for v in vehicles:
         prev_load = 0
-        for s in range(len(v.route()) - 1):
+        for s in range(len(v.route())-1):
             load = v.loads()[s]
             diff = prev_load - load
             prev_load = load
@@ -746,9 +798,9 @@ def insertU_nearest_generator(vehicles, unbalanced_stations, graph):
                 continue
             distance = graph.edges[route[0], u]['dist'] + graph.edges[route[1], u]['dist']  # init
             for k in range(1, len(route) - 1):
-                if route[j - 1] == u or route[j] == u:
+                if route[j-1] == u or route[j] == u:
                     continue
-                current_distance = graph.edges[route[j - 1], u]['dist'] + graph.edges[route[j], u]['dist']
+                current_distance = graph.edges[route[j-1], u]['dist'] + graph.edges[route[j], u]['dist']
                 if current_distance < distance:
                     distance = current_distance
                     j = k
@@ -775,14 +827,49 @@ def insertU_nearest_v2(vehicles, unbalanced_stations, graph):
             if len(route) < 2:
                 continue
             for j in range(1, len(route) - 1):
-                if route[j - 1] == u or route[j] == u:
+                if route[j-1] == u or route[j] == u:
                     continue
-                current_distance = graph.edges[route[j - 1], u]['dist'] + graph.edges[route[j], u]['dist']
+                current_distance = graph.edges[route[j-1], u]['dist'] + graph.edges[route[j], u]['dist']
                 if current_distance < best_distance:
                     best_distance = current_distance
                     bj = j
                     bi = i
 
+        candidate[bi].set_route(candidate[bi].route()[:bj] + [u] + candidate[bi].route()[bj:])
+        # set new load as 0
+        candidate[bi].set_loads(candidate[bi].loads()[:bj] + [0] + candidate[bi].loads()[bj:])
+    return candidate
+
+
+def insertU_nearest_v3(vehicles, unbalanced_stations, graph):
+    """insert unbalanced stations randomly to one of the minimum distance position on each route
+
+    return:
+        Generator which generate insertU candidate
+    """
+    def _insert_ordered(l, c, i, n):
+        ret = l
+        for k in range(len(l)):
+            if c[i] < l[k][i]:
+                ret = l[:k] + [c] + l[k:]
+                break
+        return ret[:n]
+
+    probs = (10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
+    candidate = deepcopy(vehicles)
+    for u in unbalanced_stations:
+        top_n = [[0,0,1e+10],]  # init
+        for i, vehicle in enumerate(candidate):
+            route = vehicle.route()
+            if len(route) < 2:
+                continue
+            for j in range(1, len(route) - 1):
+                if route[j-1] == u or route[j] == u:
+                    continue
+                current_distance = graph.edges[route[j-1], u]['dist'] + graph.edges[route[j], u]['dist']
+                top_n = _insert_ordered(top_n, [i, j, current_distance], -1, len(probs))
+
+        bi, bj, _ = random.choices(top_n, probs)[0]
         candidate[bi].set_route(candidate[bi].route()[:bj] + [u] + candidate[bi].route()[bj:])
         # set new load as 0
         candidate[bi].set_loads(candidate[bi].loads()[:bj] + [0] + candidate[bi].loads()[bj:])
@@ -833,16 +920,10 @@ def get_unbalanced_stations(problem_instance, vehicles):
 def _get_loading_and_unbalanced_stations(problem_instance, vehicles):
     """Given vehicles, calculate best loading instructions and return unbalanced stations
     """
-    problem_instance_copy = deepcopy(problem_instance)
-    problem_instance_copy.vehicles = vehicles
-    calculate_loading_MF(problem_instance_copy)
-
-    # calculate_loading_MF(problem_instance)
-    # graph = _get_rebalanced_graph(problem_instance.model.copy(), vehicles)
-
-    graph = _get_rebalanced_graph(problem_instance_copy.model.copy(), vehicles)
+    problem_instance.vehicles = vehicles
+    calculate_loading_MF(problem_instance)
+    graph = _get_rebalanced_graph(problem_instance.model.copy(), vehicles)
     unbalanced_stations = [x for x in graph.nodes if graph.nodes[x]['sup'] != 0]
-
     return unbalanced_stations
 
 
@@ -862,8 +943,7 @@ def remove_and_insert_station(problem_instance):
         if not unbalanced_stations:
             # if removal neighbor routes are possibly balanced, return them
             return removed_vehicles
-        for inserted_vehicles in insertU_nearest_generator(removed_vehicles, unbalanced_stations,
-                                                           copied_problem_instance.model.copy()):
+        for inserted_vehicles in insertU_nearest_generator(removed_vehicles, unbalanced_stations, copied_problem_instance.model.copy()):
             # for inserted_vehicles in insertU_generator(removed_vehicles, unbalanced_stations, at_random=True):
             unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, inserted_vehicles)
             if not unbalanced_stations:
@@ -903,26 +983,56 @@ def destroy_rebuild(problem_instance, num_removal=3):
     return problem_instance.vehicles
 
 
-def multi_remove_and_insert_station(problem_instance, num_removal=3):
+
+def multi_remove_and_insert_station(problem_instance, num_removal=1):
     copied_problem_instance = deepcopy(problem_instance)
-    for removed_vehicles in remove_multi_stations_generator(copied_problem_instance.vehicles, at_random=True,
-                                                            num_removal=num_removal):
-        # for removed_vehicles in remove_worst_meta_generator(copied_problem_instance.vehicles, copied_problem_instance.model.copy(), mode='worst', num_removal=num_removal):
+
+    for removed_vehicles in remove_multi_stations_generator(copied_problem_instance.vehicles, at_random=True, num_removal=num_removal):
         unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, removed_vehicles)
-        # print('after removal: ', len(unbalanced_stations))
+        if not unbalanced_stations:
+            # if removal neighbor routes are possibly balanced, return them
+            print("Found feasible routes by removal.")
+            return removed_vehicles
+        # for inserted_vehicles in insertU_nearest_generator(removed_vehicles, unbalanced_stations, copied_problem_instance.model.copy()):
+        #     unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, inserted_vehicles)
+        #     if not unbalanced_stations:
+        #         print("Found feasible routes by insertion.")
+        #         return inserted_vehicles
+        # vehicles = _delete_consecutive_same_station(removed_vehicles)
+        vehicles = insertU_nearest_v3(removed_vehicles, unbalanced_stations, copied_problem_instance.model.copy())
+        # vehicles = _delete_consecutive_same_station(vehicles)
+        unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, vehicles)
+        if not unbalanced_stations:
+            print(f"Found feasible routes by insertion.")
+            return vehicles
+    # if there is no candidate,
+        # vehicles = removed_vehicles
+        # for n in range(5):
+        #     vehicles = insertU_nearest_v3(vehicles, unbalanced_stations, copied_problem_instance.model.copy())
+        #     # vehicles = _delete_consecutive_same_station(vehicles)
+        #     unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, vehicles)
+        #     if not unbalanced_stations:
+        #         print(f"Found feasible routes by {n+1} insertion.")
+        #         return vehicles
+    # if there is no candidate, return original
+    print("Did not find any feasible routes.")
+    return problem_instance.vehicles
+
+
+def multi_remove_and_insert_station_v2(problem_instance, num_removal=5):
+    copied_problem_instance = deepcopy(problem_instance)
+
+    for removed_vehicles in remove_multi_stations_generator(copied_problem_instance.vehicles, at_random=True, num_removal=num_removal):
+        unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, removed_vehicles)
         if not unbalanced_stations:
             # if removal neighbor routes are possibly balanced, return them
             return removed_vehicles
-        # inserted_vehicles = insert_regret_generator(removed_vehicles, copied_problem_instance)
-        inserted_vehicles = insertU_nearest_v2(removed_vehicles, unbalanced_stations,
-                                               copied_problem_instance.model.copy())
+        inserted_vehicles = insertU_nearest_v3(removed_vehicles, unbalanced_stations, copied_problem_instance.model.copy())
         unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, inserted_vehicles)
-        # print('after insertion: ', len(unbalanced_stations))
         if not unbalanced_stations:
             return inserted_vehicles
     # if there is no candidate, return original
     return copied_problem_instance.vehicles
-
 
 """
 General VNS.
