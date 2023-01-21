@@ -637,22 +637,22 @@ def insert_regret_generator(vehicles, copied_problem_instance, mode='balance'):
                     unbalanced_stations_candidate = get_unbalanced_stations(candidate_problem_instance,
                                                                             candidate)
                     if not unbalanced_stations_candidate:
-                        second_best_disbalance = best_disbalance
+                        second_best_disbalance = deepcopy(best_disbalance)
                         second_best_i_j = best_i_j
-                        best_i_j = [i, j]
+                        best_i_j = deepcopy([i, j])
                         best_disbalance = 0
 
                     else:
                         if best_disbalance > len(unbalanced_stations_candidate):
                             second_best_i_j = best_i_j
-                            second_best_disbalance = best_disbalance
-                            best_i_j = [i, j]
+                            second_best_disbalance = deepcopy(best_disbalance)
+                            best_i_j = deepcopy([i, j])
                             best_disbalance = len(unbalanced_stations_candidate)
                         else:
                             if second_best_disbalance > len(unbalanced_stations_candidate):
                                 second_best_disbalance = len(unbalanced_stations_candidate)
-                                second_best_i_j = [i, j]
-            regret = best_disbalance - second_best_disbalance
+                                second_best_i_j = deepcopy([i, j])
+            regret = second_best_disbalance - best_disbalance
             regret_for_stations.append(regret)
             best_disbalance_for_stations.append(best_disbalance)
             best_positions_for_stations.append(best_i_j)
@@ -673,6 +673,7 @@ def insert_regret_generator(vehicles, copied_problem_instance, mode='balance'):
         copied_problem_instance.vehicles = copied_vehicles
 
         print('Disbalances:', best_disbalance_for_stations)
+        print('Regrets:', regret_for_stations)
         print('Insert positions:', best_positions_for_stations)
         print('Inserted station:', inserted_station)
         print('Unbalanced stations (before):', unbalanced_stations)
