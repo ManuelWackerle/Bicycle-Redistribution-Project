@@ -46,7 +46,7 @@ ordered_large_nbhs = [int(np.floor(instance_size * element)) for element in dest
 
 print("*** Showing improvement with LNS***")
 start = time.time()
-vns.large_nbh_search(problem,
+distance_hist_lns, time_hist_lns, operation_hist_lns, time_shake, shake_effect = vns.large_nbh_search(problem,
                      ordered_large_nbhs,
                      ordered_nbhs,
                      change_local_nbh=vns.change_nbh_sequential,
@@ -61,7 +61,7 @@ problem.display_results()
 
 print("*** Showing improvement with VNS ***")
 start = time.time()
-vns.general_variable_nbh_search(problem_copy,
+distance_hist, time_hist, operation_hist = vns.general_variable_nbh_search(problem_copy,
                                 ordered_nbhs,
                                 change_nbh=vns.change_nbh_sequential,
                                 verbose=0
@@ -71,6 +71,17 @@ print("*** Final Result without LNS ***")
 print("Time taken: ", time.time()-start)
 print("Reduction: ", (-problem_copy.calculate_distances() + initial_dist) / initial_dist * 100, "%")
 problem_copy.display_results()
+
+plt.plot(time_hist, distance_hist, color='b', label="bare-vns")
+plt.plot(time_hist_lns, distance_hist_lns, color='r', label="lns-vns")
+for i, time in enumerate(time_shake):
+    plt.axvline(time, ls="dashed")
+    plt.text(time, initial_dist, "LN changes? %s" % (not shake_effect[i]), rotation=-90,
+             verticalalignment='top', fontsize=12)
+plt.xlabel("Time (s)")
+plt.ylabel("Distance (m)")
+plt.legend()
+plt.show()
 
 
 
