@@ -1282,7 +1282,7 @@ def large_nbh_search(problem_instance, ordered_large_nbhs: [int], ordered_local_
             time_shake.append(time.time())
             # new_vehicle_routes = multi_remove_and_insert_station(problem_instance, ordered_large_nbhs[large_nbh_index])
             old_vehicle_routes = problem_instance.vehicles
-            new_vehicle_router = large_nbh_operator(problem_instance, ordered_large_nbhs[large_nbh_index])
+            new_vehicle_routes = large_nbh_operator(problem_instance, ordered_large_nbhs[large_nbh_index])
             # new_vehicle_routes = destroy_rebuild(problem_instance, ordered_large_nbhs[large_nbh_index])
             shake_effect.append(new_vehicle_routes == problem_instance.get_all_routes())
         else:
