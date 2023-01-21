@@ -7,61 +7,70 @@ from copy import deepcopy
 import vns
 from tests.test_with_various_graphs import run_test
 
+import time
+import utils
+from load_csv import load_graph
+from structure import ProblemInstance, Vehicle
+from load_csv import load_subset_from_ordered_nodes
+from copy import deepcopy
+import os
+import numpy as np
+import vns
+
 """
 Use this file to load, test and run different solution approaches on the data.
 """
+instances_dir = os.path.relpath('..\\..\\Problem Instances', os.path.dirname(os.path.abspath(os.getcwd())))
+instance = "sample_graph_03.csv"
+graph, node_info = load_subset_from_ordered_nodes(nodes=50, centeredness=5)
+# graph, node_info = load_graph(os.path.splitext(instance)[0], path=instances_dir, use_adjacency_matrix=False)
+instance_size = graph.number_of_nodes()
 
+# Input vehicle information.
+vehicles = []
+for i in range(5):
+    vehicles.append(Vehicle(capacity=20, vehicle_id=str(i)))
 
-if __name__ == '__main__':
+# Mount problem instance with and without zero demand nodes
+problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)
 
-    # #Copy this into main
-    # num_vehicles = 5
-    # capacity = 15
-    # min_graph_size = 200
-    # max_graph_size = 200
-    # graph_size_step = 10
-    # graph_variations = 1
-    # trials_per_graph = 50
-    # run_test(num_vehicles, capacity, min_graph_size, max_graph_size, graph_size_step, graph_variations, trials_per_graph)
+# Solve the problem
+vns.greedy_routing_v1(problem)
+problem_copy = deepcopy(problem)
+initial_dist = problem.calculate_distances()
 
+# Define local neighbours
+ordered_nbhs = [vns.inter_two_opt, vns.intra_two_opt, vns.intra_or_opt, vns.remove_and_insert_station]
+destruction_degrees = [0.05, 0.07, 0.10, 0.13]
+ordered_large_nbhs = [int(np.floor(instance_size * element)) for element in destruction_degrees]
 
-    ##___________________________________________________________________ VARIABLE NEIGHBOURHOOD SEARCH APPROACH
-    # Load Problem Instance
-    graph, node_info = load_subset_from_ordered_nodes(nodes=50, centeredness=5)
+print("*** Showing improvement with LNS***")
+start = time.time()
+vns.large_nbh_search(problem,
+                     ordered_large_nbhs,
+                     ordered_nbhs,
+                     change_local_nbh=vns.change_nbh_sequential,
+                     change_large_nbh=vns.change_nbh_pipe,
+                     timeout=100,
+                     large_verbose=0
+                     )
+print("*** Final result using LNS ***")
+print("Time taken", time.time()-start)
+print("Reduction: ", (-problem.calculate_distances() + initial_dist) / initial_dist * 100, "%")
+problem.display_results()
 
-    # Imput vehicle information.
-    vehicles = []
-    for i in range(5):
-        vehicles.append(Vehicle(capacity=20, vehicle_id=str(i)))
+print("*** Showing improvement with VNS ***")
+start = time.time()
+vns.general_variable_nbh_search(problem_copy,
+                                ordered_nbhs,
+                                change_nbh=vns.change_nbh_sequential,
+                                verbose=0
+                                )
 
-    # Mount problem instance with and without zero demand nodes
-    problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)
-    problem_no_zeros = deepcopy(problem)
-    problem_no_zeros.remove_nodes_zero_demand()
+print("*** Final Result without LNS ***")
+print("Time taken: ", time.time()-start)
+print("Reduction: ", (-problem_copy.calculate_distances() + initial_dist) / initial_dist * 100, "%")
+problem_copy.display_results()
 
-
-    # Check that the problems are different.
-    assert problem.model != problem_no_zeros.model, "The graphs are the same"
-
-    # Compute runtime for the graph without the removed 0 demand nodes
-    start1 = time.time()
-    vns.greedy_routing_v1(problem)
-
-    routes = problem.get_all_routes()
-    utils.visualize_routes_go(routes, node_info)
-
-
-    ordered_nbhs = [vns.inter_two_opt, vns.intra_two_opt, vns.intra_or_opt, vns.remove_and_insert_station]
-    ordered_large_nbhs = [3, 4, 5, 6, 7]
-
-    # distance_hist, time_hist, operation_hist = vns.general_variable_nbh_search(
-    #     problem, ordered_nbhs, change_nbh=vns.change_nbh_sequential, timeout=100, verbose=1)
-    # utils.show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs,
-    #                              change_nbh_name='skewed sequential')
-
-    vns.large_nbh_search(problem, ordered_large_nbhs, ordered_nbhs, large_verbose=1, local_verbose=1, large_timeout=120, timeout=10)
-
-    routes = problem.get_all_routes()
-    utils.visualize_routes_go(routes, node_info)
 
 
