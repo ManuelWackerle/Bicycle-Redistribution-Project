@@ -646,7 +646,7 @@ def remove_worst_meta_generator(vehicles, graph, num_removal=5, mode='worst', me
         candidate = deepcopy(vehicles)
 
 
-def insert_regret_generator(vehicles, copied_problem_instance, mode='balance'):
+def insert_regret_generator(vehicles, copied_problem_instance, mode='balance', verbose=0):
     """generates routes by inserting multiple stations, preferring the station which provide the lowest number
         of unbalanced stations after its insertion in the best arc.
 
@@ -724,15 +724,17 @@ def insert_regret_generator(vehicles, copied_problem_instance, mode='balance'):
         copied_vehicles[i].set_route(route_update)
         copied_problem_instance.vehicles = copied_vehicles
 
-        print('Disbalances:', best_disbalance_for_stations)
-        print('Regrets:', regret_for_stations)
-        print('Insert positions:', best_positions_for_stations)
-        print('Inserted station:', inserted_station)
-        print('Unbalanced stations (before):', unbalanced_stations)
+        if verbose:
+            print('Disbalances:', best_disbalance_for_stations)
+            print('Regrets:', regret_for_stations)
+            print('Insert positions:', best_positions_for_stations)
+            print('Inserted station:', inserted_station)
+            print('Unbalanced stations (before):', unbalanced_stations)
 
         unbalanced_stations = get_unbalanced_stations(copied_problem_instance, copied_vehicles)
 
-        print('Unbalanced stations (after):', unbalanced_stations)
+        if verbose:
+            print('Unbalanced stations (after):', unbalanced_stations)
 
     return copied_vehicles
 
@@ -1208,9 +1210,9 @@ def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=c
 
     start_time = time.time()
     nbh_index = 0
-    distance_hist = [problem_instance.calculate_distances(), ]
-    time_hist = [0, ]
-    operation_hist = [0, ]
+    distance_hist = []
+    time_hist = []
+    operation_hist = []
 
     while nbh_index < len(ordered_nbhs) and time.time() < start_time + timeout:
         new_vehicle_routes = ordered_nbhs[nbh_index](problem_instance)
@@ -1235,7 +1237,7 @@ def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=c
             nbh_index = change_nbh(problem_instance, new_vehicle_routes, nbh_index, verbose)
 
         distance_hist.append(problem_instance.calculate_distances())
-        time_hist.append(time.time() - start_time)
+        time_hist.append(time.time())
         operation_hist.append(nbh_index)
 
     return distance_hist, time_hist, operation_hist
@@ -1244,6 +1246,7 @@ def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=c
 def large_nbh_search(problem_instance, ordered_large_nbhs: [int], ordered_local_nbhs: [],
                      change_large_nbh=change_nbh_pipe,
                      change_local_nbh=change_nbh_sequential,
+                     large_nbh_operator=destroy_rebuild,
                      large_timeout=60, timeout=10, skew_param=10, local_verbose=1, large_verbose=1):
     """
     Integrate multiple_remove and insert stations as Large neighbourhood.
@@ -1262,10 +1265,11 @@ def large_nbh_search(problem_instance, ordered_large_nbhs: [int], ordered_local_
     start_time = time.time()
     large_nbh_index = 0
     first_time = True  # To skip the shake in the first trial
-    distance_hist = [problem_instance.calculate_distances(), ]
-    time_hist = [0, ]
-    operation_hist = [0, ]
+    distance_hist = []
+    time_hist = []
+    operation_hist = []
     time_shake = []
+    shake_effect = []
     """
     Outer loop controls the large neighbourhood change. We use the multiple insert and remove neighbourhood with
     varying number of stations (as given by ordered_large_nbhs) as large neighbourhood operator.
@@ -1274,10 +1278,13 @@ def large_nbh_search(problem_instance, ordered_large_nbhs: [int], ordered_local_
     """
     while large_nbh_index < len(ordered_large_nbhs) and time.time() < start_time + large_timeout:
         if first_time is False:
-            time_shake.append(time.time() - start_time)
+            # time_shake.append(time.time() - start_time)
+            time_shake.append(time.time())
             # new_vehicle_routes = multi_remove_and_insert_station(problem_instance, ordered_large_nbhs[large_nbh_index])
             old_vehicle_routes = problem_instance.vehicles
-            new_vehicle_routes = destroy_rebuild(problem_instance, ordered_large_nbhs[large_nbh_index])
+            new_vehicle_router = large_nbh_operator(problem_instance, ordered_large_nbhs[large_nbh_index])
+            # new_vehicle_routes = destroy_rebuild(problem_instance, ordered_large_nbhs[large_nbh_index])
+            shake_effect.append(new_vehicle_routes == problem_instance.get_all_routes())
         else:
             old_vehicle_routes = problem_instance.vehicles
             new_vehicle_routes = problem_instance.vehicles
@@ -1330,7 +1337,10 @@ def large_nbh_search(problem_instance, ordered_large_nbhs: [int], ordered_local_
                       "to remove", ordered_large_nbhs[large_nbh_index], "stations")
 
         distance_hist = distance_hist + distance_hist_local
-        time_hist = time_hist + [element + time_hist[-1] for element in time_hist_local]
-        operation_hist = operation_hist + [element + operation_hist[-1] for element in operation_hist_local]
+        # time_hist = time_hist + [element + time_hist[-1] for element in time_hist_local]
+        time_hist = time_hist + time_hist_local
+        operation_hist = operation_hist + operation_hist_local
+    time_hist = [element - start_time for element in time_hist]
+    time_shake = [element - start_time for element in time_shake]
 
-    return distance_hist, time_hist, operation_hist, time_shake
+    return distance_hist, time_hist, operation_hist, time_shake, shake_effect
