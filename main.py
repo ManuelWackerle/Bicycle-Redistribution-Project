@@ -27,7 +27,7 @@ if __name__ == '__main__':
 
     ##___________________________________________________________________ VARIABLE NEIGHBOURHOOD SEARCH APPROACH
     # Load Problem Instance
-    graph, node_info = load_subset_from_ordered_nodes(nodes=250, centeredness=5)
+    graph, node_info = load_subset_from_ordered_nodes(nodes=50, centeredness=5)
 
     # Imput vehicle information.
     vehicles = []
@@ -52,10 +52,14 @@ if __name__ == '__main__':
 
 
     ordered_nbhs = [vns.inter_two_opt, vns.intra_two_opt, vns.intra_or_opt, vns.remove_and_insert_station]
-    distance_hist, time_hist, operation_hist = vns.general_variable_nbh_search(
-        problem, ordered_nbhs, change_nbh=vns.change_nbh_sequential, timeout=100, verbose=1)
-    utils.show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs,
-                                 change_nbh_name='skewed sequential')
+    ordered_large_nbhs = [3, 4, 5, 6, 7]
+
+    # distance_hist, time_hist, operation_hist = vns.general_variable_nbh_search(
+    #     problem, ordered_nbhs, change_nbh=vns.change_nbh_sequential, timeout=100, verbose=1)
+    # utils.show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs,
+    #                              change_nbh_name='skewed sequential')
+
+    vns.large_nbh_search(problem, ordered_large_nbhs, ordered_nbhs, large_verbose=1, local_verbose=1, large_timeout=120, timeout=10)
 
     routes = problem.get_all_routes()
     utils.visualize_routes_go(routes, node_info)
