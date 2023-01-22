@@ -743,7 +743,8 @@ def insert_regret_generator(vehicles, copied_problem_instance, mode='balance', v
     return copied_vehicles
 
 
-def insert_regret_generator_quick(vehicles, copied_problem_instance, mode='distance', metric='dist', meta_parameter=5, verbose=0):
+def insert_regret_generator_quick(vehicles, copied_problem_instance, mode='distance', metric='dist', meta_parameter=5,
+                                  verbose=0, insert_ratio=0.5):
     """generates routes by inserting multiple stations, preferring the station which provide the lowest number
         of unbalanced stations after its insertion in the best arc.
 
@@ -761,11 +762,14 @@ def insert_regret_generator_quick(vehicles, copied_problem_instance, mode='dista
     copied_vehicles = deepcopy(vehicles)
     choose = lambda n, p: int(np.floor(n * np.random.uniform() ** p))
 
-    insert_ratio = 0.7
-    num_insert = max(int(np.ceil(len(unbalanced_stations) * insert_ratio)), len(unbalanced_stations))
+    num_insert = min(int(np.ceil(len(unbalanced_stations) * insert_ratio)), len(unbalanced_stations))
     random.shuffle(unbalanced_stations)
+    load_calculation_step = 3
+    maximal_iteration_number = 1
 
+    counter = 0
     while unbalanced_stations:
+        counter += 1
         for station in unbalanced_stations[0:num_insert]:
             insertions = []
             distances = []
@@ -798,8 +802,13 @@ def insert_regret_generator_quick(vehicles, copied_problem_instance, mode='dista
             best_i, best_j = insertions[arg]
             route = copied_vehicles[best_i].route()
             copied_vehicles[best_i].set_route(route[:best_j] + [station] + route[best_j:])
-        break
-        unbalanced_stations = get_unbalanced_stations(copied_problem_instance, copied_vehicles)
+
+        if counter == maximal_iteration_number:
+            break
+
+        if counter % load_calculation_step == 0:
+            # recalculate the unbalanced stations
+            unbalanced_stations = get_unbalanced_stations(copied_problem_instance, copied_vehicles)
 
     return copied_vehicles
 
@@ -1031,8 +1040,11 @@ def destroy_rebuild(problem_instance, num_removal=3, verbose=1):
     copied_problem_instance = deepcopy(problem_instance)
     print('Distance before applying the LN: '
           + str(copied_problem_instance.calculate_distances()) + '.')
+
+    # the initial insert ratio
+    insert_ratio = 0.5
     for removed_vehicles in remove_worst_meta_generator(copied_problem_instance.vehicles,
-                                                        copied_problem_instance.model.copy(), mode='worst',
+                                                        copied_problem_instance.model.copy(), mode='worst', meta_parameter=2,
                                                         num_removal=num_removal):
         unbalanced_stations = get_unbalanced_stations(copied_problem_instance, removed_vehicles)
         if not unbalanced_stations:
@@ -1040,7 +1052,7 @@ def destroy_rebuild(problem_instance, num_removal=3, verbose=1):
             return removed_vehicles
 
         start_time_inner = time.time()
-        inserted_vehicles = insert_regret_generator_quick(removed_vehicles, copied_problem_instance)
+        inserted_vehicles = insert_regret_generator_quick(removed_vehicles, copied_problem_instance, insert_ratio=insert_ratio)
         execution_time_inner = time.time() - start_time_inner
 
         if verbose:
@@ -1059,6 +1071,9 @@ def destroy_rebuild(problem_instance, num_removal=3, verbose=1):
                       + str(output_problem_copy.calculate_distances()) + '.')
 
                 return inserted_vehicles
+        if insert_ratio < 1:
+            # the insert ratio for the next rebuild is increased if the previous rebuild wasn't successful
+            insert_ratio += 0.05
 
     # if there is no candidate, return original
     return problem_instance.vehicles

@@ -20,7 +20,7 @@ from matplotlib import pyplot as plt
 
 instances_dir = os.path.relpath('..\\..\\Problem Instances', os.path.dirname(os.path.abspath(os.getcwd())))
 instance = "sample_graph_03.csv"
-graph, node_info = load_subset_from_ordered_nodes(nodes=50, centeredness=5)
+graph, node_info = load_subset_from_ordered_nodes(nodes=100, centeredness=5)
 instance_size = graph.number_of_nodes()
 
 # Input vehicle information.
@@ -36,8 +36,10 @@ initial_dist = problem.calculate_distances()
 
 # Define local neighbours
 ordered_nbhs = [vns.inter_two_opt, vns.intra_two_opt, vns.intra_or_opt, vns.multi_remove_and_insert_station]
-destruction_degrees = [0.04, 0.07, 0.10, 0.13, 0.16, 0.20]
+# destruction_degrees = [0.04, 0.07, 0.10, 0.13, 0.16, 0.20]
 # destruction_degrees = [0.10, 0.10, 0.10, 0.10, 0.10, 0.10]
+# destruction_degrees = [0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10]
+destruction_degrees = [0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]
 ordered_large_nbhs = [int(np.floor(instance_size * element)) for element in destruction_degrees]
 
 """
