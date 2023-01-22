@@ -36,7 +36,8 @@ initial_dist = problem.calculate_distances()
 
 # Define local neighbours
 ordered_nbhs = [vns.inter_two_opt, vns.intra_two_opt, vns.intra_or_opt, vns.multi_remove_and_insert_station]
-destruction_degrees = [0.05, 0.07, 0.10, 0.13]
+destruction_degrees = [0.04, 0.07, 0.10, 0.13, 0.16, 0.20]
+# destruction_degrees = [0.10, 0.10, 0.10, 0.10, 0.10, 0.10]
 ordered_large_nbhs = [int(np.floor(instance_size * element)) for element in destruction_degrees]
 
 """
@@ -50,8 +51,8 @@ distance_hist_lns, time_hist_lns, operation_hist_lns, time_shake, shake_effect =
                                                                                                       change_local_nbh=vns.change_nbh_sequential,
                                                                                                       change_large_nbh=vns.change_nbh_pipe,
                                                                                                       large_nbh_operator=vns.destroy_rebuild,
-                                                                                                      timeout=40,
-                                                                                                      large_timeout=200,
+                                                                                                      timeout=3*60,
+                                                                                                      large_timeout=15*60,
                                                                                                       large_verbose=0
                                                                                                       )
 problem.display_results()
@@ -69,8 +70,8 @@ distance_hist_lns_multi, time_hist_lns_multi, operation_hist_lns_multi, time_sha
                                                                                                       change_local_nbh=vns.change_nbh_sequential,
                                                                                                       change_large_nbh=vns.change_nbh_pipe,
                                                                                                       large_nbh_operator=vns.multi_remove_and_insert_station,
-                                                                                                      timeout=40,
-                                                                                                      large_timeout=200,
+                                                                                                      timeout=3*60,
+                                                                                                      large_timeout=15*60,
 
                                                                                                       large_verbose=0
                                                                                                       )
@@ -84,7 +85,7 @@ problem_copy = deepcopy(problem)
 distance_hist, time_hist, operation_hist = vns.general_variable_nbh_search(problem_copy,
                                                                            ordered_nbhs,
                                                                            change_nbh=vns.change_nbh_sequential,
-                                                                           verbose=0, timeout=200
+                                                                           verbose=0, timeout=15*60
                                                                            )
 time_hist = [element - start_time for element in time_hist]
 problem_copy.display_results()
