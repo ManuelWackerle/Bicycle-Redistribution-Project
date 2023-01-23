@@ -1,11 +1,13 @@
 import os.path
+
+import networkx as nx
 from haversine import haversine, Unit
 import csv
 from utils import *
 import numpy as np
 
 
-def load_graph(graph_name, path=None, use_adjacency_matrix=True, truncate_after=-1):
+def load_graph(graph_name, path=None, location='muc', use_adjacency_matrix=True, truncate_after=-1):
     """
          Loads data from a csv file into a NetworkX graph.
 
@@ -21,11 +23,11 @@ def load_graph(graph_name, path=None, use_adjacency_matrix=True, truncate_after=
     # munich_lat = [46.8, 49.5]
     # munich_long = [10.1, 13.1]
 
-    graph = nx.Graph()
-    adjacency_dict = {}
 
+    adjacency_dict = {}
     if use_adjacency_matrix:
-        edge_data = csv.reader(open('MVG Code/adjacency_matrix.csv', 'r'))
+        graph = nx.DiGraph()
+        edge_data = csv.reader(open('MVG Code/adjacency_matrix_' + location + '.csv', 'r'))
         v_ids = next(edge_data)
         for u_pairs in edge_data:
             u_id = u_pairs[0]
@@ -33,6 +35,8 @@ def load_graph(graph_name, path=None, use_adjacency_matrix=True, truncate_after=
             for v_index in range(1, len(u_pairs)):
                 v_id = v_ids[v_index]
                 adjacency_dict[u_id][v_id] = float(u_pairs[v_index])
+    else:
+        graph = nx.Graph()
 
     if path is None:
         data = csv.reader(open('Problem Instances/' + graph_name + '.csv', "r"))
@@ -49,18 +53,19 @@ def load_graph(graph_name, path=None, use_adjacency_matrix=True, truncate_after=
         if 0 < truncate_after < row_count:
             break
         _, bin_id, supply_str, lat_str, long_str = row
-        supply, x, y = int(supply_str), float(long_str), float(lat_str)
-        
+        supply, x, y = int(round(float(supply_str))), float(long_str), float(lat_str)
+
         if munich_long[0] < x < munich_long[1] and munich_lat[0] < y < munich_lat[1] \
             and not use_adjacency_matrix or bin_id in adjacency_dict:
             total_supply += supply
             graph.add_node(str(count), sup=supply)
-            for node, data in node_data.items():
+            for node, attr in node_data.items():
                 if use_adjacency_matrix:
-                    dist = int(round(adjacency_dict[bin_id][data['bin_id']]))
+                    graph.add_edge(node, str(count), dist=int(round(adjacency_dict[attr['bin_id']][bin_id])))
+                    graph.add_edge(str(count), node, dist=int(round(adjacency_dict[bin_id][attr['bin_id']])))
                 else:
-                    dist = int(round(haversine((x, y), data['pos'], unit=Unit.METERS))) #Great circle distance between two coordinates on a earth
-                graph.add_edge(node, str(count), dist=dist)
+                    dist = int(round(haversine((x, y), attr['pos'], unit=Unit.METERS))) #Great circle distance between two coordinates on a earth
+                    graph.add_edge(node, str(count), dist=dist)
             node_data[str(count)] = {'bin_id': bin_id, 'pos': (x, y)}
             count += 1
         else:
@@ -74,18 +79,21 @@ def load_graph(graph_name, path=None, use_adjacency_matrix=True, truncate_after=
     return graph, node_data
 
 
-def load_subset_from_ordered_nodes(nodes=100, centeredness=5):
+def load_subset_from_ordered_nodes(nodes, centeredness=5, directed=True):
     """
          Loads a subset of valid nodes as a NetworkX graph.
 
          :param nodes: number of nodes.
          :param centeredness: 0 - not centred, 20 - heavily centred. The centeredness determines if central nodes are
-                              prefered over exterior nodes. 0 - nodes chosen uniformly at random.
+                              prefered over exterior nodes. 0 = nodes chosen uniformly at random.
          :return graph: a NetworkX graph representation of the data
          :return node_data: dictionary of additional node information, bin_id and position
     """
 
-    graph = nx.Graph()
+    if directed:
+        graph = nx.DiGraph()
+    else:
+        graph = nx.Graph()
     adjacency_dict = {}
     node_data = {}
 
@@ -107,7 +115,7 @@ def load_subset_from_ordered_nodes(nodes=100, centeredness=5):
 
 
     #Load edge data
-    edge_data = csv.reader(open('MVG Code/adjacency_matrix.csv', 'r'))
+    edge_data = csv.reader(open('MVG Code/adjacency_matrix_muc.csv', 'r'))
     v_ids = next(edge_data)
     for u_pairs in edge_data:
         u_id = u_pairs[0]
@@ -147,8 +155,12 @@ def load_subset_from_ordered_nodes(nodes=100, centeredness=5):
         total_supply += supply
         graph.add_node(str(count), sup=supply)
         for node, data in node_data.items():
-            avg_dist = (adjacency_dict[bin_id][data['bin_id']] + adjacency_dict[data['bin_id']][bin_id])/2
-            graph.add_edge(node, str(count), dist=avg_dist)
+            if directed:
+                graph.add_edge(node, str(count), dist=adjacency_dict[bin_id][data['bin_id']])
+                graph.add_edge(str(count), node, dist=adjacency_dict[data['bin_id']][bin_id])
+            else: #undirected graph takes average distance
+                avg_dist = (adjacency_dict[bin_id][data['bin_id']] + adjacency_dict[data['bin_id']][bin_id])/2
+                graph.add_edge(node, str(count), dist=avg_dist)
         node_data[str(count)] = {'bin_id': bin_id, 'pos': (x, y)}
 
     #Fix balancing

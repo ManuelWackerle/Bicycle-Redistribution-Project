@@ -4,9 +4,7 @@ Definitions of the base classes used in the problem.
 from copy import deepcopy
 
 import networkx as nx
-from utils import bcolors
-from utils import edge_data_as_numpy
-from utils import dict_data_as_numpy
+from utils import *
 
 
 class Vehicle(object):
@@ -26,6 +24,7 @@ class Vehicle(object):
         self._distance = 0
         self._current_position = None
         self._current_load = 0
+        self._modified = True
 
     def add_stop(self, stop, load):
         self._route.append(stop)
@@ -47,6 +46,12 @@ class Vehicle(object):
 
     def set_route(self, route):
         self._route = route
+        self._modified = True
+
+    def modified(self):
+        modified = self._modified
+        self._modified = False
+        return modified
 
     def route(self):
         return self._route
@@ -84,7 +89,9 @@ class ProblemInstance:
 
         # problem instance variables
         self.model = input_graph
+        self.node_data = node_data
         self.vehicles = vehicles
+        self.depot = '0'
 
         # tracking variables
         self.total_source = 0
@@ -142,8 +149,10 @@ class ProblemInstance:
         prev = vehicle.route()[0]
         for s in range(1, len(vehicle.route())):
             if prev == vehicle.route()[s]:
-                vehicle.remove_stop(s)
-                print("Warning: same route twice in  sequence - might be a mistake")
+                # vehicle.remove_stop(s)
+                self.show_warning("same node twice in  sequence, there might be a mistake")
+                save_object(self.model, "erroneous_graph")
+                save_object(self.vehicles, "erroneous_vehicles")
             else:
                 dist += self.model.edges[prev, vehicle.route()[s]]['dist']
             prev = vehicle.route()[s]
@@ -351,16 +360,22 @@ class ProblemInstance:
 
     # def tsp_bound(self):
     #     graph = deepcopy(self.model)
+    #     print(graph.is_directed())
     #     m = len(graph.nodes)
+    #     capacity = self.vehicles[0].capacity()
     #     print(m)
     #     for n in self.model.nodes:
-    #         while graph.nodes[n]['sup'] > 5: #self.vehicles[0].capacity():
-    #             graph.nodes[n]['sup'] -= 5
+    #         while graph.nodes[n]['sup'] > capacity:
+    #             graph.nodes[n]['sup'] -= capacity
     #             graph.add_node(str(m))
     #             for o in graph.nodes:
     #                 if o != str(m) and o != n:
-    #                     graph.add_edge(str(m), o, dist=graph.edges[n, o]['dist'])
-    #             graph.add_edge(str(m), n, dist=1794)
+    #                     d = graph.edges[n, o]['dist']
+    #                     graph.add_edge(str(m), o, dist=d)
+    #                     d = graph.edges[o, n]['dist']
+    #                     graph.add_edge(o, str(m), dist=d)
+    #             graph.add_edge(str(m), n, dist=999999)
+    #             graph.add_edge(str(n), m, dist=999999)
     #             m += 1
     #     print(m)
     #     seq = nx.algorithms.approximation.christofides(graph, weight='dist')
@@ -375,12 +390,13 @@ class ProblemInstance:
         Displays the information in routes and instructions in a human-readable way
         """
         results = "Results\t\t"
+
         if show_instructions:
             results += "total distance || instructions   <station>: <load/unload bikes> (<total on vehicle>)"
             for v in self.vehicles:
                 dist = self.calculate_distance(v)
-                line = "\nVehicle #{:<3} {:>12}km |".format(v.id(), dist/1000)
-                prev_load, last = 0, 0
+                line = "\nVehicle #{:<3} {:>12}km |".format(v.id(), round(dist/1000, 3))
+                prev_load, last = 0, -1
                 for s in range(len(v.route())-1):
                     load = v.loads()[s]
                     diff = load - prev_load
@@ -392,12 +408,38 @@ class ProblemInstance:
                     last = s
                 results += line + "|{:>3}: ".format(v.route()[last + 1]) + "u{:<2}( 0)|".format(prev_load)
             results += "\n"
-        d = self.calculate_distances()/1000
+        d = round(self.calculate_distances()/1000, 3)
         success = bcolors.OKGREEN if self.allocated == self.imbalance else bcolors.FAIL
         results += bcolors.BOLD + bcolors.OKGREEN + "Total Distance:{:10}km".format(d) + bcolors.ENDC + " ||  "
         results += success + bcolors.BOLD + " Total Rebalanced: {}/{}".format(self.allocated,
                                                                               self.imbalance) + bcolors.ENDC
         print(results)
+
+    def plot_vehicle_route(self, vehicle):
+        route = vehicle.route()
+        loads = vehicle.loads()
+        loads = loads if len(loads) == len(route) else loads + [0]
+        stops = list(range(len(route)))
+
+        plt.plot(stops, loads)
+        running_supply = 0
+        virtual_loads = [0]*len(route)
+        for n, n_id in enumerate(route[1:]):
+            supply = self.model.nodes[n_id]['sup']
+            running_supply += supply
+            colour = 'g' if loads[n+1] - loads[n] == supply else 'y'
+            plt.bar(n+1, supply, color=colour, alpha=0.5)
+            virtual_loads[n+1] = running_supply
+        # plt.plot(stops, virtual_loads)
+        plt.xlabel('Vehicle {}'.format(vehicle.id()))
+        plt.ylabel(['Load Values', 'Supply Values'])
+
+        # Add horizontal markers for max and min load values
+        min_load = 0
+        max_load = vehicle.capacity()
+        plt.axhline(min_load, color='b', linestyle='--')
+        plt.axhline(max_load, color='b', linestyle='--')
+        plt.show()
 
     def remove_nodes_zero_demand(self):
         """

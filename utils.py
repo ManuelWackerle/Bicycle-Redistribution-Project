@@ -35,6 +35,8 @@ def display_graph(Graph, node_pos=None, edge_list=None, title=None):
     plt.draw()
     plt.show()
 
+
+
 def visualize_routes(routes, node_data):
     station_color = 'grey'
     random.seed(0)
