@@ -872,11 +872,11 @@ def insertU_nearest_generator(vehicles, unbalanced_stations, graph):
             j = 1
             if route[0] == u or route[1] == u:
                 continue
-            distance = graph.edges[route[0], u]['dist'] + graph.edges[route[1], u]['dist']  # init
+            distance = graph.edges[route[0], u]['dist'] + graph.edges[u, route[1]]['dist']  # init
             for k in range(1, len(route) - 1):
                 if route[j - 1] == u or route[j] == u:
                     continue
-                current_distance = graph.edges[route[j - 1], u]['dist'] + graph.edges[route[j], u]['dist']
+                current_distance = graph.edges[route[j-1], u]['dist'] + graph.edges[u, route[j]]['dist']
                 if current_distance < distance:
                     distance = current_distance
                     j = k
@@ -905,7 +905,7 @@ def insertU_nearest_v2(vehicles, unbalanced_stations, graph):
             for j in range(1, len(route) - 1):
                 if route[j - 1] == u or route[j] == u:
                     continue
-                current_distance = graph.edges[route[j - 1], u]['dist'] + graph.edges[route[j], u]['dist']
+                current_distance = graph.edges[route[j-1], u]['dist'] + graph.edges[u, route[j]]['dist']
                 if current_distance < best_distance:
                     best_distance = current_distance
                     bj = j
@@ -943,7 +943,7 @@ def insertU_nearest_v3(vehicles, unbalanced_stations, graph):
             for j in range(1, len(route) - 1):
                 if route[j - 1] == u or route[j] == u:
                     continue
-                current_distance = graph.edges[route[j - 1], u]['dist'] + graph.edges[route[j], u]['dist']
+                current_distance = graph.edges[route[j-1], u]['dist'] + graph.edges[u, route[j]]['dist']
                 top_n = _insert_ordered(top_n, [i, j, current_distance], -1, len(probs))
 
         bi, bj, _ = random.choices(top_n, probs)[0]
@@ -1027,7 +1027,7 @@ def remove_and_insert_station(problem_instance):
             if not unbalanced_stations:
                 return inserted_vehicles
     # if there is no candidate, return original
-    return copied_problem_instance.vehicles
+    return problem_instance.vehicles
 
 
 def destroy_rebuild(problem_instance, num_removal=3, verbose=1):
@@ -1088,7 +1088,7 @@ def multi_remove_and_insert_station(problem_instance, num_removal=1):
         unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, removed_vehicles)
         if not unbalanced_stations:
             # if removal neighbor routes are possibly balanced, return them
-            print("Found feasible routes by removal.")
+            # print("Found feasible routes by removal.")
             return removed_vehicles
         # for inserted_vehicles in insertU_nearest_generator(removed_vehicles, unbalanced_stations, copied_problem_instance.model.copy()):
         #     unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, inserted_vehicles)
@@ -1100,9 +1100,9 @@ def multi_remove_and_insert_station(problem_instance, num_removal=1):
         # vehicles = _delete_consecutive_same_station(vehicles)
         unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, vehicles)
         if not unbalanced_stations:
-            print(f"Found feasible routes by insertion.")
-            execution_time_outer = time.time() - start_time_outer
-            print('It took ' + str(execution_time_outer) + ' seconds to find a feasible solution.')
+            # print(f"Found feasible routes by insertion.")
+            # execution_time_outer = time.time() - start_time_outer
+            # print('It took ' + str(execution_time_outer) + ' seconds to find a feasible solution.')
             return vehicles
     # if there is no candidate,
     # vehicles = removed_vehicles
@@ -1114,7 +1114,7 @@ def multi_remove_and_insert_station(problem_instance, num_removal=1):
     #         print(f"Found feasible routes by {n+1} insertion.")
     #         return vehicles
     # if there is no candidate, return original
-    print("Did not find any feasible routes.")
+    # print("Did not find any feasible routes.")
     return problem_instance.vehicles
 
 
@@ -1133,7 +1133,7 @@ def multi_remove_and_insert_station_v2(problem_instance, num_removal=5):
         if not unbalanced_stations:
             return inserted_vehicles
     # if there is no candidate, return original
-    return copied_problem_instance.vehicles
+    return problem_instance.vehicles
 
 
 """
