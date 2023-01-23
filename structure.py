@@ -150,8 +150,8 @@ class ProblemInstance:
         for s in range(1, len(vehicle.route())):
             if prev == vehicle.route()[s]:
                 # vehicle.remove_stop(s)
-                print("Warning: same stop twice in  sequence - might be a mistake")
-                # self.show_warning("same stop twice in  sequence, there might be a mistake")
+                # print("Warning: same stop twice in  sequence - might be a mistake")
+                self.show_warning("same stop twice in  sequence, there might be a mistake")
                 # save_object(self.model, "erroneous_graph")
                 # save_object(self.vehicles, "erroneous_vehicles")
             else:

@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 def test_vehicles(num_vehicles: []):
     assert len(num_vehicles) != 0, "Can't have zero vehicles"
     assert all(n > 0 for n in num_vehicles), "Negative vehicles? Really?"
-    assert all(isinstance(n, int) for n in num_vehicles), "Non-integer vehicles seem a bad idea..."
+    assert all(isinstance(n, int) for n in num_vehicles), "Non-integer vehicles seems like a bad idea..."
 
 
 def bare_general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=vns.change_nbh_sequential,
@@ -86,7 +86,7 @@ def minimize_interpolate_distances(distances):
     dists = [int(num_str) for num_str in distances.values()]
 
     dist_fun = interpolate.interp1d(vehicles, dists)
-    optimum_vehicles = optimize.minimize_scalar(dist_fun, bounds=[min(vehicles), max(vehicles)])
+    optimum_vehicles = optimize.minimize_scalar(dist_fun, bounds=[min(vehicles), max(vehicles)], method="bounded")
     check_optimum = [optimum_vehicles.fun, distances[(min(vehicles))], distances[(max(vehicles))]]
     min_idx = argmin(check_optimum)
     if min_idx == 0:

@@ -228,7 +228,7 @@ def intra_two_opt(prob, tolerance=0):
             best, value, new_value = 0, 0, 0
             for s2 in range(s1 + 2, len(route) - 2):
                 rk, rl = route[s2], route[s2 + 1]
-                if ri != rk and ri != rl and rj != rk and rj != rl:
+                if ri != rk and ri != rl and rj != rk and rj != rl and ri != rj and rk != rl:
                     value = prob.model.edges[ri, rj]['dist'] + prob.model.edges[rk, rl]['dist']
                     new_value = prob.model.edges[ri, rk]['dist'] + prob.model.edges[rj, rl]['dist']
                     if prob.model.is_directed():
@@ -410,7 +410,7 @@ def inter_two_opt(prob, tolerance=0):
                 ri, rj = route1[s1], route1[s1 + 1]
                 for s2 in range(s1 - clip, min(s1 + clip, len(route2) - 1)):
                     rk, rl = route2[s2], route2[s2 + 1]
-                    if ri != rk and ri != rl and rj != rk and rj != rl:
+                    if ri != rk and ri != rl and rj != rk and rj != rl and ri != rj and rk != rl:
                         value = prob.model.edges[ri, rj]['dist'] + prob.model.edges[rk, rl]['dist']
                         new_value = prob.model.edges[ri, rl]['dist'] + prob.model.edges[rk, rj]['dist']
                         diff = value - new_value
@@ -544,7 +544,8 @@ def distance_between_stops(graph, route, stop1, stop2):
     step = 1 if stop1 < stop2 else -1
     for stop in range(stop1, stop2, step):
         u, v = route[stop], route[stop + step]
-        dist += graph.edges[u, v]['dist']
+        if u != v: #u == v should never happen - this is a quick fix
+            dist += graph.edges[u, v]['dist']
     return dist
 
 
@@ -1497,6 +1498,7 @@ def large_nbh_search(problem_instance, ordered_large_nbhs: [int], ordered_local_
             first_time = False
 
         calculate_loading_MF(problem_instance)
+        remove_unused_stops(problem_instance)
         problem_instance.display_results(False) if large_verbose == 1 else None
 
         """
