@@ -21,7 +21,7 @@ from matplotlib import pyplot as plt
 kwargs = {
     'nodes': 250,
     'centeredness': 5,
-    'number_of_vehicles': 10,
+    'number_of_vehicles': 5,
     'vehicle_capacity': 20,
     'ordered_nbhs': [vns.inter_two_opt, vns.intra_two_opt, vns.intra_or_opt, vns.multi_remove_and_insert_station],
     'ordered_large_nbhs': [1, 3, 5, 8, 10],
@@ -72,6 +72,7 @@ distance_hist_lns, time_hist_lns, operation_hist_lns, time_shake, shake_effect =
                                                                                                       large_nbh_operator=vns.destroy_rebuild,
                                                                                                       timeout=kwargs["local_timeout"],
                                                                                                       large_timeout=kwargs["large_timeout"],
+                                                                                                      local_verbose=kwargs["local_verbose"],
                                                                                                       large_verbose=kwargs["large_verbose"]
                                                                                                       )
 problem.display_results()
@@ -123,7 +124,7 @@ if kwargs["show_each_distance"]:
 
 
 plt.plot([x/60 for x in time_hist], [x / 1000 for x in distance_hist], color='red', label="bare-vns", zorder=-1, lw=3)
-# plt.plot(time_hist_lns, distance_hist_lns, color='red', label="lns-vns-destroy")
+plt.plot(time_hist_lns, distance_hist_lns, color='red', label="lns-vns-destroy")
 plt.plot([x/60 for x in time_hist_lns_multi], [x / 1000 for x in distance_hist_lns_multi], color='blue', label="lns-vns-multi", lw=1)
 
 # for i, time in enumerate(time_shake):
