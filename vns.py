@@ -443,6 +443,7 @@ def inter_two_opt(prob, tolerance=0):
     prob.vehicles = original_vehicles
     return out
 
+
 def intra_two_opt_v2(prob:ProblemInstance, tolerance=0):
     """
     Searches for intra two-opt switches that provide a decrease in route length
@@ -515,7 +516,6 @@ def inter_two_opt_v2(prob:ProblemInstance, tolerance=0):
             if best > 0:
                 swaps.append([best, r1, r2, b1, b2])
 
-
     prob.intialize_flow_graph()
     swaps.sort(reverse=True)
     used = set()
@@ -535,7 +535,6 @@ def inter_two_opt_v2(prob:ProblemInstance, tolerance=0):
                 used.add(l2)
     return out
 
-
 def distance_between_stops(graph, route, stop1, stop2):
     dist = 0
     step = 1 if stop1 < stop2 else -1
@@ -544,17 +543,20 @@ def distance_between_stops(graph, route, stop1, stop2):
         dist += graph.edges[u, v]['dist']
     return dist
 
-def tsp_rerouting(prob:ProblemInstance):
-    for v in prob.vehicles:
-        sub_graph = prob.model.subgraph(v.route()).to_undirected()
-        tsp_route = nx.algorithms.approximation.christofides(sub_graph, weight='dist')
-        depot_idx = tsp_route.index(prob.depot)
-        tsp_route = tsp_route[depot_idx:] + tsp_route[:depot_idx]
-        v.set_route(tsp_route)
 
-
-
-
+def _delete_consecutive_same_station(vehicles):
+    for k, vehicle in enumerate(vehicles):
+        route = vehicle.route()
+        N = len(route)
+        if N < 5:
+            print(f"Warning! The vehicle {k} has only {N} stations in the route.")
+        remove_idxes = set()
+        for i, station in enumerate(route):
+            if i < N-1 and station == route[i+1]:
+                remove_idxes.add(i)
+        vehicle.set_route([s for i, s in enumerate(route) if i not in remove_idxes])
+        vehicle.set_loads([l for i, l in enumerate(vehicle.loads()) if i not in remove_idxes])
+    return vehicles
 
 
 def remove_one_station_generator(vehicles, at_random=False):
@@ -586,6 +588,84 @@ def remove_one_station_generator(vehicles, at_random=False):
         candidate[i].set_route(candidate[i].route()[:j] + candidate[i].route()[j+1:])
         candidate[i].set_loads(candidate[i].loads()[:j] + candidate[i].loads()[j+1:])
         yield candidate
+
+
+def remove_multi_stations_generator(vehicles, at_random=False, num_removal=5):
+    """generate routes by removing multiple stations
+
+    Write
+        N = Number of trucks (=len(self.routes))
+        Ln = Route length (=len(self.routes[n])-1)
+        C = Number of candidates
+    Note
+        Ln depends on n in N. (route length might be different for each vehicles)
+    :return
+        Generator which generates vechiles with the shape (N, Ln) with total number C
+    """
+    idxes = []
+    N = len(vehicles)
+    for i in range(N):
+        if len(vehicles[i].route()) <= 5:
+            # if route length is less than two, it contains only depot
+            # if route is too short, don't remove from that route.
+            continue
+        # ignore index 0 and -1 since both are depot
+        for j in range(1, len(vehicles[i].route())-1):
+            idxes.append([i, j])
+
+    if at_random:
+        random.shuffle(idxes)  # generate at random
+
+    nr = 0
+    candidate = deepcopy(vehicles)
+    removal_idxes = [[] for _ in range(N)]
+    for i, j in idxes:
+        if nr < num_removal:
+            removal_idxes[i].append(j)
+            nr += 1
+        else:
+            for n in range(N):
+                original_route = candidate[n].route()
+                idxes = [
+                    k for k, station in enumerate(original_route)
+                    if k not in removal_idxes[n]
+                ]
+                candidate[n].set_route([station for k, station in enumerate(original_route) if k in idxes])
+                candidate[n].set_loads([load for k, load in enumerate(candidate[n].loads()) if k in idxes])
+            # candidate[i].set_route(candidate[i].route()[:j] + candidate[i].route()[j+1:])
+            # candidate[i].set_loads(candidate[i].loads()[:j] + candidate[i].loads()[j+1:])
+            candidate = _delete_consecutive_same_station(candidate)
+            yield candidate
+            nr = 0
+            removal_idxes = [[] for _ in range(N)]
+            candidate = deepcopy(vehicles)
+
+
+def remove_multi_stations_generator_v2(problem_instance, num_removal=5):
+    """generate routes by removing multiple stations
+    """
+    vehicles = problem_instance.vehicles
+    candidate = deepcopy(vehicles)
+    longest_distance = 0
+    bi = 0
+    for i, vehicle in enumerate(vehicles):
+        current_distance = problem_instance.calculate_distance(vehicle)
+        if current_distance > longest_distance:
+            longest_distance = current_distance
+            bi = i
+
+    station_idxes = list(range(1, len(vehicles[bi])))
+    random.shuffle(station_idxes)
+    nr = 0
+    for j in station_idxes:
+        if nr < num_removal:
+            candidate[bi].set_route(candidate[bi].route()[:j] + candidate[i].route()[j+1:])
+            candidate[bi].set_loads(candidate[bi].loads()[:j] + candidate[i].loads()[j+1:])
+            nr += 1
+        else:
+            yield candidate
+            nr = 0
+            candidate = deepcopy(vehicles)
 
 
 def _get_rebalanced_graph(graph, vehicles):
@@ -631,6 +711,72 @@ def insertU_nearest_generator(vehicles, unbalanced_stations, graph):
             yield candidate
 
 
+def insertU_nearest_v2(vehicles, unbalanced_stations, graph):
+    """insert unbalanced stations to minimum distance position on each route
+
+    return:
+        Generator which generate insertU candidate
+    """
+    candidate = deepcopy(vehicles)
+    random.shuffle(unbalanced_stations)
+    for u in unbalanced_stations:
+        best_distance = 1e+10  # init
+        bi = 0
+        bj = 0
+        for i, vehicle in enumerate(candidate):
+            route = vehicle.route()
+            if len(route) < 2:
+                continue
+            for j in range(1, len(route) - 1):
+                if route[j-1] == u or route[j] == u:
+                    continue
+                current_distance = graph.edges[route[j-1], u]['dist'] + graph.edges[route[j], u]['dist']
+                if current_distance < best_distance:
+                    best_distance = current_distance
+                    bj = j
+                    bi = i
+
+        candidate[bi].set_route(candidate[bi].route()[:bj] + [u] + candidate[bi].route()[bj:])
+        # set new load as 0
+        candidate[bi].set_loads(candidate[bi].loads()[:bj] + [0] + candidate[bi].loads()[bj:])
+    return candidate
+
+
+def insertU_nearest_v3(vehicles, unbalanced_stations, graph):
+    """insert unbalanced stations randomly to one of the minimum distance position on each route
+
+    return:
+        Generator which generate insertU candidate
+    """
+    def _insert_ordered(l, c, i, n):
+        ret = l
+        for k in range(len(l)):
+            if c[i] < l[k][i]:
+                ret = l[:k] + [c] + l[k:]
+                break
+        return ret[:n]
+
+    probs = (10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
+    candidate = deepcopy(vehicles)
+    for u in unbalanced_stations:
+        top_n = [[0,0,1e+10],]  # init
+        for i, vehicle in enumerate(candidate):
+            route = vehicle.route()
+            if len(route) < 2:
+                continue
+            for j in range(1, len(route) - 1):
+                if route[j-1] == u or route[j] == u:
+                    continue
+                current_distance = graph.edges[route[j-1], u]['dist'] + graph.edges[route[j], u]['dist']
+                top_n = _insert_ordered(top_n, [i, j, current_distance], -1, len(probs))
+
+        bi, bj, _ = random.choices(top_n, probs)[0]
+        candidate[bi].set_route(candidate[bi].route()[:bj] + [u] + candidate[bi].route()[bj:])
+        # set new load as 0
+        candidate[bi].set_loads(candidate[bi].loads()[:bj] + [0] + candidate[bi].loads()[bj:])
+    return candidate
+
+
 def insertU_generator(vehicles, unbalanced_stations, at_random=False):
     """generate routes by inserting unbalanced station
 
@@ -665,6 +811,7 @@ def insertU_generator(vehicles, unbalanced_stations, at_random=False):
 def _get_loading_and_unbalanced_stations(problem_instance, vehicles):
     """Given vehicles, calculate best loading instructions and return unbalanced stations
     """
+    problem_instance.vehicles = vehicles
     calculate_loading_MF(problem_instance)
     graph = _get_rebalanced_graph(problem_instance.model.copy(), vehicles)
     unbalanced_stations = [x for x in graph.nodes if graph.nodes[x]['sup'] != 0]
@@ -692,6 +839,57 @@ def remove_and_insert_station(problem_instance):
             unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, inserted_vehicles)
             if not unbalanced_stations:
                 return inserted_vehicles
+    # if there is no candidate, return original
+    return copied_problem_instance.vehicles
+
+
+def multi_remove_and_insert_station(problem_instance, num_removal=1):
+    copied_problem_instance = deepcopy(problem_instance)
+
+    for removed_vehicles in remove_multi_stations_generator(copied_problem_instance.vehicles, at_random=True, num_removal=num_removal):
+        unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, removed_vehicles)
+        if not unbalanced_stations:
+            # if removal neighbor routes are possibly balanced, return them
+            print("Found feasible routes by removal.")
+            return removed_vehicles
+        # for inserted_vehicles in insertU_nearest_generator(removed_vehicles, unbalanced_stations, copied_problem_instance.model.copy()):
+        #     unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, inserted_vehicles)
+        #     if not unbalanced_stations:
+        #         print("Found feasible routes by insertion.")
+        #         return inserted_vehicles
+        # vehicles = _delete_consecutive_same_station(removed_vehicles)
+        vehicles = insertU_nearest_v3(removed_vehicles, unbalanced_stations, copied_problem_instance.model.copy())
+        # vehicles = _delete_consecutive_same_station(vehicles)
+        unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, vehicles)
+        if not unbalanced_stations:
+            print(f"Found feasible routes by insertion.")
+            return vehicles
+    # if there is no candidate, 
+        # vehicles = removed_vehicles
+        # for n in range(5):
+        #     vehicles = insertU_nearest_v3(vehicles, unbalanced_stations, copied_problem_instance.model.copy())
+        #     # vehicles = _delete_consecutive_same_station(vehicles)
+        #     unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, vehicles)
+        #     if not unbalanced_stations:
+        #         print(f"Found feasible routes by {n+1} insertion.")
+        #         return vehicles
+    # if there is no candidate, return original
+    print("Did not find any feasible routes.")
+    return copied_problem_instance.vehicles
+
+
+def multi_remove_and_insert_station_v2(problem_instance, num_removal=5):
+    copied_problem_instance = deepcopy(problem_instance)
+
+    for removed_vehicles in remove_multi_stations_generator(copied_problem_instance.vehicles, at_random=True, num_removal=num_removal):
+        unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, removed_vehicles)
+        if not unbalanced_stations:
+            # if removal neighbor routes are possibly balanced, return them
+            return removed_vehicles
+        inserted_vehicles = insertU_nearest_v3(removed_vehicles, unbalanced_stations, copied_problem_instance.model.copy())
+        unbalanced_stations = _get_loading_and_unbalanced_stations(copied_problem_instance, inserted_vehicles)
+        if not unbalanced_stations:
+            return inserted_vehicles
     # if there is no candidate, return original
     return copied_problem_instance.vehicles
 
@@ -852,6 +1050,7 @@ def change_nbh_skewed_sequential(problem_instance, modified_vehicles: [], nbh, s
         print(nbh) if verbose == 1 else None
     return nbh
 
+
 def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=change_nbh_sequential,
                                 timeout=10, skew_param=10, verbose=0):
     """
@@ -894,12 +1093,104 @@ def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=c
         else:
             nbh_index = change_nbh(problem_instance, new_vehicle_routes, nbh_index, verbose)
 
-        if verbose:
-            print(" - switching to neighbourhood: ", nbh_index)
-            problem_instance.display_results(False)
-        calculate_loading_MF(problem_instance)
         distance_hist.append(problem_instance.calculate_distances())
         time_hist.append(time.time()-start_time)
         operation_hist.append(nbh_index)
-    
+
     return distance_hist, time_hist, operation_hist
+
+
+def large_nbh_search(problem_instance, ordered_large_nbhs: [int], ordered_local_nbhs: [], change_large_nbh=change_nbh_pipe,
+                     change_local_nbh = change_nbh_sequential,
+                     large_timeout=60, timeout=10, skew_param=10, local_verbose=0, large_verbose=0):
+    """
+    Integrate multiple_remove and insert stations as Large neighbourhood.
+    :param problem_instance: current array of routes for all vehicles
+    :param ordered_large_nbhs: list of number of stations to remove for large neighbourhood operators.
+    :param ordered_local_nbhs: list of ordered local neighbourhood operators
+    :param change_large_nbh: What type of neighbourhood change we consider in the large neighbourhoods
+    :param change_local_nbh: Neighbourhood change type in local improvement phase
+    :param timeout: maximum execution time of the VNS loop
+    :param large_timeout: maximum total execution time.
+    :param skew_param: see change_nbh_skewed_sequential
+    :param local_verbose: control prints. 1 to print 0 to not print the changes inside the local improvement.
+    :param large_verbose: control prints for change in large neighbourhoods.
+    :return: best route found.
+    """
+
+    start_time = time.time()
+    large_nbh_index = 0
+    first_time = True  # To skip the shake in the first trial
+    distance_hist = [problem_instance.calculate_distances(), ]
+    time_hist = [0, ]
+    operation_hist = [0, ]
+    time_shake = []
+    shake_effect = []
+    """
+    Outer loop controls the large neighbourhood change. We use the multiple insert and remove neighbourhood with
+    varying number of stations (as given by ordered_large_nbhs) as large neighbourhood operator.
+    
+    Multiple remove insert acts as a large-scale shaking procedure.
+    """
+    while large_nbh_index < len(ordered_large_nbhs) and time.time() < start_time + large_timeout:
+        if first_time is False:
+            # For debugging purposes, check the effect of the Large Neighbourhood operator. When and what it does.
+            time_shake.append(time.time() - start_time)
+            old_routes = problem_instance.get_all_routes()
+            new_vehicle_routes = multi_remove_and_insert_station(problem_instance, ordered_large_nbhs[large_nbh_index])
+            problem_instance.vehicles = new_vehicle_routes
+            shake_effect.append(old_routes == problem_instance.get_all_routes())
+        else:
+            new_vehicle_routes = problem_instance.vehicles
+            first_time = False
+
+        candidate_instance = deepcopy(problem_instance)
+        candidate_instance.vehicles = new_vehicle_routes
+        calculate_loading_MF(candidate_instance)
+        candidate_instance.display_results(False) if large_verbose == 1 else None
+
+        """
+        After the initial large neighbourhood shake, we use VND to locally improve the routes.
+        """
+
+        distance_hist_local, time_hist_local, operation_hist_local = general_variable_nbh_search(candidate_instance,
+                                                                                                 ordered_local_nbhs,
+                                                                                                 change_nbh=change_local_nbh,
+                                                                                                 timeout=timeout,
+                                                                                                 skew_param=10,
+                                                                                                 verbose=local_verbose)
+
+        """
+        End of local improvement phase
+        """
+
+        if change_large_nbh == change_nbh_cyclic:
+            distances_old = problem_instance.calculate_distances()
+            large_nbh_index_old = large_nbh_index
+            large_nbh_index = change_nbh_cyclic(problem_instance, candidate_instance.vehicles, large_nbh_index,
+                                                len(ordered_large_nbhs), verbose=0)
+            if large_verbose == 1 and large_nbh_index < len(ordered_large_nbhs):
+                print("Large neighbourhood change remove ", ordered_large_nbhs[large_nbh_index_old],
+                      "to remove", ordered_large_nbhs[large_nbh_index], "stations")
+            if distances_old == candidate_instance.calculate_distances():
+                break
+
+        elif change_large_nbh == change_nbh_skewed_sequential:
+            large_nbh_index_old = large_nbh_index
+            large_nbh_index = change_nbh_skewed_sequential(problem_instance, candidate_instance.vehicles, large_nbh_index,
+                                                           skew_param, verbose=0)
+            if large_verbose == 1 and large_nbh_index < len(ordered_large_nbhs):
+                print("Large neighbourhood change remove ", ordered_large_nbhs[large_nbh_index_old],
+                      "to remove", ordered_large_nbhs[large_nbh_index], "stations")
+        else:
+            large_nbh_index_old = large_nbh_index
+            large_nbh_index = change_large_nbh(problem_instance, candidate_instance.vehicles, large_nbh_index, verbose=0)
+            if large_verbose == 1 and large_nbh_index < len(ordered_large_nbhs):
+                print("Large neighbourhood change remove ", ordered_large_nbhs[large_nbh_index_old],
+                      "to remove", ordered_large_nbhs[large_nbh_index], "stations")
+
+        distance_hist = distance_hist + distance_hist_local
+        time_hist = time_hist + [element + time_hist[-1] for element in time_hist_local]
+        operation_hist = operation_hist + [element + operation_hist[-1] for element in operation_hist_local]
+
+    return distance_hist, time_hist, operation_hist, time_shake, shake_effect

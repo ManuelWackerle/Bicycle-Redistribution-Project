@@ -150,9 +150,10 @@ class ProblemInstance:
         for s in range(1, len(vehicle.route())):
             if prev == vehicle.route()[s]:
                 # vehicle.remove_stop(s)
-                self.show_warning("same node twice in  sequence, there might be a mistake")
-                save_object(self.model, "erroneous_graph")
-                save_object(self.vehicles, "erroneous_vehicles")
+                print("Warning: same stop twice in  sequence - might be a mistake")
+                # self.show_warning("same stop twice in  sequence, there might be a mistake")
+                # save_object(self.model, "erroneous_graph")
+                # save_object(self.vehicles, "erroneous_vehicles")
             else:
                 dist += self.model.edges[prev, vehicle.route()[s]]['dist']
             prev = vehicle.route()[s]

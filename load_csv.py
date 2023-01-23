@@ -16,10 +16,10 @@ def load_graph(graph_name, path=None, location='muc', use_adjacency_matrix=True,
          :return graph: a NetworkX graph representation of the data
          :return node_data: dictionary of additional node information, bin_id and position
          """
-    munich_lat = [47.8, 48.5]
-    munich_long = [11.1, 12.1]
-    # munich_lat = [47.975, 48.33]
-    # munich_long = [11.279, 11.825]
+    # munich_lat = [47.8, 48.5]
+    # munich_long = [11.1, 12.1]
+    munich_lat = [47.975, 48.33]
+    munich_long = [11.279, 11.825]
     # munich_lat = [46.8, 49.5]
     # munich_long = [10.1, 13.1]
 

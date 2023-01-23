@@ -1,9 +1,11 @@
 import time
 import utils
 from load_csv import load_graph
+from load_csv import load_subset_from_ordered_nodes
 from structure import ProblemInstance, Vehicle
 from copy import deepcopy
 import vns
+from tests.test_with_various_graphs import run_test
 
 """
 Use this file to load, test and run different solution approaches on the data.
@@ -11,10 +13,21 @@ Use this file to load, test and run different solution approaches on the data.
 
 
 if __name__ == '__main__':
+
+    # #Copy this into main
+    # num_vehicles = 5
+    # capacity = 15
+    # min_graph_size = 200
+    # max_graph_size = 200
+    # graph_size_step = 10
+    # graph_variations = 1
+    # trials_per_graph = 50
+    # run_test(num_vehicles, capacity, min_graph_size, max_graph_size, graph_size_step, graph_variations, trials_per_graph)
+
+
     ##___________________________________________________________________ VARIABLE NEIGHBOURHOOD SEARCH APPROACH
     # Load Problem Instance
-    graph, node_info = load_graph('sample_graph_03')
-    # graph, node_info = load_graph('sample_graph_06')
+    graph, node_info = load_subset_from_ordered_nodes(nodes=250, centeredness=5)
 
     # Imput vehicle information.
     vehicles = []
@@ -26,52 +39,25 @@ if __name__ == '__main__':
     problem_no_zeros = deepcopy(problem)
     problem_no_zeros.remove_nodes_zero_demand()
 
+
     # Check that the problems are different.
     assert problem.model != problem_no_zeros.model, "The graphs are the same"
 
     # Compute runtime for the graph without the removed 0 demand nodes
     start1 = time.time()
-
     vns.greedy_routing_v1(problem)
-    # problem.display_results(False)
 
-    ordered_nbhs = [vns.inter_two_opt, vns.intra_two_opt, vns.remove_and_insert_station]
+    routes = problem.get_all_routes()
+    utils.visualize_routes_go(routes, node_info)
+
+
+    ordered_nbhs = [vns.inter_two_opt, vns.intra_two_opt, vns.intra_or_opt, vns.remove_and_insert_station]
     distance_hist, time_hist, operation_hist = vns.general_variable_nbh_search(
-        problem, ordered_nbhs, change_nbh=vns.change_nbh_skewed_sequential,
-        skew_param=100, timeout=30, verbose=1)
+        problem, ordered_nbhs, change_nbh=vns.change_nbh_sequential, timeout=100, verbose=1)
+    utils.show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs,
+                                 change_nbh_name='skewed sequential')
 
-    # problem.display_results()
-    utils.show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs, change_nbh_name='skewed sequential')
-
-    # end1 = time.time()
-    #
-    # # print(bcolors.OKGREEN + "Found route with length {}m".format(route_cost) + bcolors.ENDC)
-    # print("VNS runtime with nodes of zero demand: %.4f s" % (end1 - start1))
-    #
-    # # Compute runtime for the instance with inactive 0 demand nodes
-    # start2 = time.time()
-    #
-    # vns.greedy_routing_v1(problem_no_zeros)
-    # # problem_no_zeros.display_results(False)
-    #
-    # ordered_nbhs = [vns.inter_two_opt, vns.intra_two_opt]
-    # vns.general_variable_nbh_search(problem_no_zeros, ordered_nbhs, timeout=120)
-    # # problem_no_zeros.display_results()
-    #
-    # end2 = time.time()
-
-    # print(bcolors.OKGREEN + "Found route with length {}m".format(route_cost) + bcolors.ENDC)
-    # print("VNS runtime with no zero-demand nodes: %.4f s" % (end2 - start2))
-
-    # Print comparisson
-    # print("Removing the nodes with zero demands speeds up the process by: %.4f percent" % (
-    #     (1 - (end2 - start2) / (end1 - start1))*100))
-
-    ##==========================================================================================================
+    routes = problem.get_all_routes()
+    utils.visualize_routes_go(routes, node_info)
 
 
-
-
-
-    # Visualize - use only for very small graphs
-    # display_graph(graph, node_info)
