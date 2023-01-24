@@ -2,6 +2,7 @@ import time
 import utils
 from load_csv import load_graph
 from load_csv import load_subset_from_ordered_nodes
+from load_csv import load_from_pickle
 from structure import ProblemInstance, Vehicle
 from copy import deepcopy
 import vns
@@ -21,7 +22,7 @@ from matplotlib import pyplot as plt
 kwargs = {
     'nodes': 40,
     'centeredness': 5,
-    'number_of_vehicles': 3,
+    'number_of_vehicles': 41,
     'vehicle_capacity': 20,
     'ordered_nbhs': [vns.inter_two_opt, vns.intra_two_opt, vns.intra_or_opt, vns.multi_remove_and_insert_station],
     'ordered_large_nbhs': [1, 3, 5, 8, 10],
@@ -38,7 +39,9 @@ Use this file to load, test and run different solution approaches on the data.
 """
 # instances_dir = os.path.relpath('..\\..\\Problem Instances', os.path.dirname(os.path.abspath(os.getcwd())))
 # instance = "sample_graph_03.csv"
-graph, node_info = load_subset_from_ordered_nodes(nodes=kwargs['nodes'], centeredness=kwargs["centeredness"])
+# graph, node_info = load_subset_from_ordered_nodes(nodes=kwargs['nodes'], centeredness=kwargs["centeredness"])
+graph, vehicle_capacity, vehicle_number = load_from_pickle(instance_name='37Guadalajara20.txt', force_balance='dummy')
+node_info = None
 # graph, node_info = load_graph(os.path.splitext(instance)[0], path=instances_dir, use_adjacency_matrix=False)
 instance_size = graph.number_of_nodes()
 
@@ -123,7 +126,7 @@ if kwargs["show_each_distance"]:
         print(f"Vehicle {i} has distance {round(problem_copy.calculate_distance(vehicle)/1000, 5)} km")
 
 
-plt.plot([x/60 for x in time_hist], [x / 1000 for x in distance_hist], color='red', label="bare-vns", zorder=-1, lw=3)
+plt.plot([x/60 for x in time_hist], [x / 1000 for x in distance_hist], color='black', label="bare-vns", zorder=-1, lw=3)
 plt.plot([x/60 for x in time_hist_lns], [x/1000 for x in distance_hist_lns], color='red', label="lns-vns-destroy")
 plt.plot([x/60 for x in time_hist_lns_multi], [x / 1000 for x in distance_hist_lns_multi], color='blue', label="lns-vns-multi", lw=1)
 
