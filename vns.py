@@ -1054,7 +1054,7 @@ def insertU_nearest_v3(vehicles, unbalanced_stations, graph):
                 current_distance = graph.edges[route[j-1], u]['dist'] + graph.edges[u, route[j]]['dist']
                 top_n = _insert_ordered(top_n, [i, j, current_distance], -1, len(probs))
 
-        bi, bj, _ = random.choices(top_n, probs)[0]
+        bi, bj, _ = random.choices(top_n, probs[:len(top_n)])[0]
         candidate[bi].set_route(candidate[bi].route()[:bj] + [u] + candidate[bi].route()[bj:])
         # set new load as 0
         candidate[bi].set_loads(candidate[bi].loads()[:bj] + [0] + candidate[bi].loads()[bj:])

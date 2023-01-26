@@ -237,6 +237,12 @@ def load_subset_from_ordered_nodes(nodes, centeredness=5, directed=True):
 #
 #     return graph, node_data
 
+def get_instances_names(filename='instances.pkl', path='Problem Instances/Benchmark Instances/'):
+    with open(path + filename, 'rb') as f:
+        data = pickle.load(f)
+    instances_names = data.keys()
+
+    return instances_names
 def load_from_pickle(instance_name='10Parma30.txt', filename='instances.pkl', path='Problem Instances/Benchmark Instances/', force_balance='none'):
     graph = nx.DiGraph()
 
@@ -245,13 +251,13 @@ def load_from_pickle(instance_name='10Parma30.txt', filename='instances.pkl', pa
     instance = data[instance_name]
     disbalances = instance['disbalances']
     adjacency_matrix = instance['adjacency']
-    vehicle_capacity = instance['veh_capa']
-    vehicle_number = None
+    vehicle_capacity = int(instance['veh_capa'])
+    vehicle_number = int(np.ceil(np.abs(sum(disbalances)) / vehicle_capacity))
+    if vehicle_number == 0:
+        vehicle_number = 1
 
     num_of_stations = len(disbalances)
     stations = []
-    def nodes_from_disbalances(disbalances):
-        pass
 
     if force_balance == 'random':
         overall_disbalance = sum(disbalances)
