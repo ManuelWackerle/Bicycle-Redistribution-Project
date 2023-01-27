@@ -255,6 +255,95 @@ class ProblemInstance:
                 prev_node = node_str
         self.mf_graph = mf_graph
 
+    def calculate_loading_MF(self, check_feasibility_only=False, start_load=0):
+        """
+        Given a set of vehicle routes, calculates the optimal loading instructions for each route using a Maximum flow computation.
+        Use this function if monotonicity is assumed.
+        :param prob: Problem instance
+        :param start_load: number of bicycles that
+        :modifies vehilce.loads: The instructions for how to load and unload the bicycles.
+        """
+
+        # Generate Max Flow graph
+        self.show_header("Generating Max flow graph")
+        total_source, total_sink = 0, start_load
+        mf_graph = nx.DiGraph()
+        mf_graph.add_node('s')  # source node
+        mf_graph.add_node('t')  # sink node
+        for v, d in self.model.nodes(data='sup'):
+            # if v == source:
+            #     total_source += d+start_load
+            #     mf_graph.add_edge('s', v, capacity=d+start_load)
+            #     mf_graph.add_edge(v, 't', capacity=start_load)
+            # else:
+            if d > 0:
+                total_source += d
+                mf_graph.add_edge('s', v, capacity=d)
+            elif d < 0:
+                total_sink -= d
+                mf_graph.add_edge(v, 't', capacity=-d)
+
+        for l, vehicle in enumerate(self.vehicles):
+            prev_node = 0
+            for r, node in enumerate(vehicle.route()):
+                node_str = "{}-{}-{}".format(node, l, r)
+                demand = self.model.nodes[node]['sup']
+                if demand > 0:
+                    mf_graph.add_edge(node, node_str)
+                elif demand < 0:
+                    mf_graph.add_edge(node_str, node)
+                if prev_node != 0:
+                    mf_graph.add_edge(prev_node, node_str, capacity=vehicle.capacity())
+                prev_node = node_str
+        self.show_info("Graph generated with {n} nodes and {e} edges. Source flow: {s}, Sink flow: {t}"
+                       .format(n=len(mf_graph.nodes), e=len(mf_graph.edges), s=total_source, t=total_sink))
+
+        # Solve Max Flow Problem
+        self.show_header("Solving the Max flow problem ")
+        self.imbalance = total_source - start_load
+        if total_sink != total_source:
+            self.show_warning("mismatch in source and sink flow capacity, no exact solution can exist.")
+            self.imbalance = -1
+
+        value, data = nx.maximum_flow(mf_graph, 's', 't')  # , flow_func=nx.algorithms.flow.shortest_augmenting_path()
+        self.allocated = value - start_load
+
+        if not check_feasibility_only:
+            if value != total_source or value != total_sink:
+                self.show_warning(
+                    "Bikes can not be allocated to full capacity. Source flow: {s}, Sink flow: {t}, Allocated: {a}"
+                        .format(s=total_source, t=total_sink, a=value))
+            else:
+                self.show_info("Bike allocation is exact. Total allocated bicycles: {}".format(value))
+
+            self.show_header("Generating instructions")
+            for l, vehicle in enumerate(self.vehicles):
+                loads = []
+                path = vehicle.route()
+                prev = path[0]
+                for r, node in enumerate(path[1:], 1):
+                    prev_str = "{}-{}-{}".format(prev, l, r - 1)
+                    node_str = "{}-{}-{}".format(node, l, r)
+                    loads.append(data[prev_str][node_str])
+                    prev = node
+                vehicle.set_loads(loads)
+
+    def remove_unused_stops(self):
+        """
+        Given a set of vehicle routes, removes all the stops where the vehicle neither load nor unloads any bikes.
+        """
+        for v in self.vehicles:
+            remove = []
+            prev_load = 0
+            for s in range(1, len(v.route()) - 1):  # ignore first and last stops (source)
+                load = v.loads()[s]
+                if load == prev_load:
+                    remove.append(s)
+                prev_load = load
+            remove.reverse()
+            for r in remove:
+                v.remove_stop(r)
+
     def verify_loading_on_swapped_route(self, b1, b2, l1, l2=None,  tolerance=0):
         l2 = l1 if l2 is None else l2
         v1, v2 = self.vehicles[l1], self.vehicles[l2]

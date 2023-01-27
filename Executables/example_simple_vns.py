@@ -1,11 +1,12 @@
 """
-Use this file to run the standard VNS
+Use this file to run a standard VNS
 """
 import time
 from structure import ProblemInstance, Vehicle
 from load_csv import load_subset_from_ordered_nodes
 import utils
 import vns
+import operators as ops
 
 
 kwargs = {
@@ -14,9 +15,8 @@ kwargs = {
     'vehicle_capacity':     15,
     'vns_timeout':          60, #seconds
     'show_routes':          False,
-    'ordered_nbhs': [vns.inter_segment_swap, vns.intra_segment_swap, vns.inter_two_opt, vns.intra_two_opt, vns.multi_remove_and_insert_station],
+    'ordered_nbhs': [ops.inter_segment_swap, ops.intra_or_opt, ops.inter_two_opt, ops.intra_two_opt, vns.multi_remove_and_insert_station],
 }
-
 
 
 ###_____________________________________________________________________________________________________________________
@@ -33,7 +33,7 @@ problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_i
 
 
 vns.greedy_routing_v1(problem, randomness=False)
-vns.calculate_loading_MF(problem)
+problem.calculate_loading_MF()
 print("\nInitial Solution using greedy alogrithm:")
 problem.display_results(kwargs['show_routes'])
 
@@ -46,6 +46,7 @@ start_time = time.time()
 
 distance_hist, time_hist, operation_hist = vns.general_variable_nbh_search(
     problem, kwargs['ordered_nbhs'], change_nbh=vns.change_nbh_pipe, timeout=kwargs['vns_timeout'], verbose=0)
+problem.calculate_loading_MF()
 
 end_time = time.time()
 
@@ -59,15 +60,15 @@ time_out = 'Converged before timeout' if time_run < kwargs['vns_timeout'] else '
 print("\nSolution after applying VNS for {} seconds ({}):".format(time_run, time_out))
 problem.display_results(kwargs['show_routes'])
 
-# ### Plot basic routes
-# utils.visualize_routes(problem.get_all_routes(), node_info)
-#
-# ### Plot routes in browser
-# utils.visualize_routes_go(problem.get_all_routes(), node_info)
-#
-# ### Plot VNS improvement vs time graph
-# utils.show_improvement_graph(distance_hist, time_hist, operation_hist, kwargs['ordered_nbhs'], change_nbh_name='Pipe')
-#
+### Plot basic routes
+utils.visualize_routes(problem.get_all_routes(), node_info)
+
+### Plot routes in browser
+utils.visualize_routes_go(problem.get_all_routes(), node_info)
+
+### Plot VNS improvement vs time graph
+utils.show_improvement_graph(distance_hist, time_hist, operation_hist, kwargs['ordered_nbhs'], change_nbh_name='Pipe')
+
 
 ###_____________________________________________________________________________________________________________________
 

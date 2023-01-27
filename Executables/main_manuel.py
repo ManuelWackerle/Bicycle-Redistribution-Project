@@ -10,6 +10,7 @@ from load_csv import load_subset_from_ordered_nodes
 from copy import deepcopy
 import numpy as np
 import vns
+import operators as ops
 
 kwargs = {
     'nodes':                42,
@@ -23,7 +24,7 @@ kwargs = {
     'show_each_distance':   True,
     'local_verbose':        1,
     'large_verbose':        1,
-    'ordered_nbhs': [vns.inter_segment_swap, vns.intra_segment_swap, vns.inter_two_opt, vns.intra_two_opt], # vns.multi_remove_and_insert_station],
+    'ordered_nbhs': [ops.inter_segment_swap_fast, ops.intra_segment_swap_fast, ops.inter_two_opt_fast, ops.intra_two_opt_fast], # vns.multi_remove_and_insert_station],
 }
 
 
@@ -33,22 +34,17 @@ random.seed(7381)
 
 
 if __name__ == '__main__':
-    # graph, node_info = load_subset_from_ordered_nodes(nodes=kwargs['nodes'], centeredness=kwargs["centeredness"])
-    graph, node_info = load_subset_from_ordered_nodes(nodes=31, centeredness=10)
+    graph, node_info = load_subset_from_ordered_nodes(nodes=kwargs['nodes'], centeredness=kwargs["centeredness"], randomness=False)
     # graph, node_info = load_graph('nyc_instance', location='nyc')
     # graph, node_info = load_graph('nyc_instance_dummy', location='nyc_dummy')
-
-    instance_size = graph.number_of_nodes()
-
-
 
 
     vehicles = [Vehicle(capacity=kwargs['vehicle_capacity'], vehicle_id=str(i)) for i in range(kwargs['number_of_vehicles'])]
     problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=1)
 
     vns.greedy_routing_v1(problem, randomness=True)
-    vns.calculate_loading_MF(problem)
-    vns.remove_unused_stops(problem)
+    problem.calculate_loading_MF()
+    problem.remove_unused_stops()
     problem.display_results()
     # visualize_routes(problem.get_all_routes(), node_info)
     # utils.visualize_routes_go(problem.get_all_routes(), node_info)

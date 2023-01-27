@@ -10,7 +10,8 @@ from load_csv import load_from_pickle
 from structure import ProblemInstance, Vehicle
 from copy import deepcopy
 import vns
-from tests.test_with_various_graphs import run_test
+import operators as ops
+from Tests.test_with_various_graphs import run_test
 
 import time
 import utils
@@ -28,7 +29,7 @@ kwargs = {
     'centeredness': 5,
     'number_of_vehicles': 41,
     'vehicle_capacity': 20,
-    'ordered_nbhs': [vns.inter_two_opt, vns.intra_two_opt, vns.intra_or_opt, vns.multi_remove_and_insert_station],
+    'ordered_nbhs': [ops.inter_two_opt, ops.intra_two_opt, ops.intra_or_opt, vns.multi_remove_and_insert_station],
     'ordered_large_nbhs': [1, 3, 5, 8, 10],
     'local_timeout': 2*60,  # second
     'large_timeout': 60*60,  # second
