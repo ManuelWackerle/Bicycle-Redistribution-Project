@@ -136,6 +136,17 @@ class ProblemInstance:
             # TODO: handle case where sink & source don't match, e.g. by adding an additional
             #  node to the graph or changing depot value
 
+    def distance_route_segment(self, route:[], start_indx, stop_indx):
+        dist = 0
+        step = 1 if start_indx < stop_indx else -1 #calculate
+        for i in range(start_indx, stop_indx, step):
+            u, v = route[i], route[i + step]
+            dist += self.model.edges[u, v]['dist']
+        return dist
+
+    def distance(self, node1, node2): #Wrapper for distance function
+        return self.model.edges[node1, node2]['dist']
+
     def calculate_distances(self, vehicles=None):
         total = 0
         if vehicles is None:
@@ -148,14 +159,7 @@ class ProblemInstance:
         dist = 0
         prev = vehicle.route()[0]
         for s in range(1, len(vehicle.route())):
-            if prev == vehicle.route()[s]:
-                # vehicle.remove_stop(s)
-                # print("Warning: same stop twice in  sequence - might be a mistake")
-                self.show_warning("same stop twice in  sequence, there might be a mistake")
-                # save_object(self.model, "erroneous_graph")
-                # save_object(self.vehicles, "erroneous_vehicles")
-            else:
-                dist += self.model.edges[prev, vehicle.route()[s]]['dist']
+            dist += self.model.edges[prev, vehicle.route()[s]]['dist']
             prev = vehicle.route()[s]
         vehicle.set_distance = dist
         return dist

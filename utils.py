@@ -228,50 +228,41 @@ def extract_saved_object(file_name):
 def show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs, change_nbh_name):
     # fig = plt.figure(figsize=(9, 6))
     fig, ax = plt.subplots(figsize=(19, 13))
-    get_colors = lambda n: ["#%06x" % random.randint(0, 0xFFFFFF) for _ in range(n)]
-    # colors = ['c', 'r', 'y', 'm', 'g', 'b', 'w']
+    # get_colors = lambda n: ["#%06x" % random.randint(0, 0xFFFFFF) for _ in range(n)]
+    # colors = get_colors(len(ordered_nbhs))
+    colors = ['#F5A623', '#9013FE', '#7ED321', '#4A90E2', '#F8E71C', '#D0021B', 'w']
+
     distance_hist = [x / 1000 for x in distance_hist]
     operation_dict = {k: [[], []] for k in set(operation_hist)}
     for d, t, o in zip(distance_hist, time_hist, operation_hist):
         operation_dict[o][0].append(t)
         operation_dict[o][1].append(d)
 
-    # plt.plot(time_hist, distance_hist, color='lightgray')
+    plt.plot(time_hist, distance_hist, color='lightgray')
 
-    # colors = get_colors(len(ordered_nbhs))
-    colors = ['#F5A623', '#9013FE', '#7ED321', '#4A90E2', 'g', 'b', 'w']
 
-    # F5A623
-    # 9013FE
-    # 7ED321
-    # 4A90E2
-    # F8E71C
-    # D0021B
+    for k,v in operation_dict.items():
+        if k >= len(ordered_nbhs):
+            continue
 
-    # for k,v in operation_dict.items():
-    #     if k >= len(ordered_nbhs):
-    #         continue
-    #
-    #     plt.plot(v[0], v[1], color=colors[k], marker='o', linestyle='None', label=ordered_nbhs[k].__name__)
-    print(time_hist)
-    for i in range(len(time_hist) - 2):
-        plt.plot([time_hist[i], time_hist[i + 1]], [distance_hist[i], distance_hist[i]],
-                 color=colors[operation_hist[i]], lw=4)
-        plt.plot([time_hist[i+1], time_hist[i+1]], [distance_hist[i], distance_hist[i+1]],
-                 color=colors[operation_hist[i]], lw=4)
-        # plt.plot([i, i+1], [distance_hist[i], distance_hist[i]],
-        #          color=colors[operation_hist[i]], lw=4)
-        # plt.plot([i+1, i+1], [distance_hist[i], distance_hist[i+1]],
-        #          color=colors[operation_hist[i]], lw=4)
+        plt.plot(v[0], v[1], color=colors[k], marker='o', linestyle='None', label=ordered_nbhs[k].__name__)
+
+    # for i in range(len(time_hist) - 2):
+    #     plt.plot([time_hist[i], time_hist[i + 1]], [distance_hist[i], distance_hist[i]],
+    #              color=colors[operation_hist[i]], lw=4)
+    #     plt.plot([time_hist[i+1], time_hist[i+1]], [distance_hist[i], distance_hist[i+1]],
+    #              color=colors[operation_hist[i]], lw=4)
 
     plt.xlabel('Computational time [s]')
     plt.ylabel('Distance [km]')
-    # plt.legend(title='Operation where:')
-    # plt.title('improvement of distance with ' + change_nbh_name + ' neighborhood search')
+    plt.legend(title='Operation where:')
+    plt.title('improvement of distance with ' + change_nbh_name + ' neighborhood search')
     now = datetime.datetime.now()
     print('Plot generated: ' + now.strftime("%d-%m-%Y_%H-%M-%S"))
     ax.set_position([0.1, 0.1, 0.8, 0.8])
-    fig.savefig(str(os.getcwd()) + '\imp_gr_' + now.strftime("%d-%m-%Y_%H-%M-%S"))
+    root = os.path.dirname(os.path.abspath(os.getcwd()))
+    folder = os.path.join(root, 'Saved', 'plots')
+    fig.savefig(folder + '/improvement_gr_' + now.strftime("%d-%m-%y_%H-%M-%S"))
     time.sleep(1)
     plt.show()
 

@@ -59,6 +59,7 @@ def load_graph(graph_name, path=None, location='muc', use_adjacency_matrix=True,
             and not use_adjacency_matrix or bin_id in adjacency_dict:
             total_supply += supply
             graph.add_node(str(count), sup=supply)
+            node_data[str(count)] = {'bin_id': bin_id, 'pos': (x, y)}
             for node, attr in node_data.items():
                 if use_adjacency_matrix:
                     graph.add_edge(node, str(count), dist=int(round(adjacency_dict[attr['bin_id']][bin_id])))
@@ -66,7 +67,6 @@ def load_graph(graph_name, path=None, location='muc', use_adjacency_matrix=True,
                 else:
                     dist = int(round(haversine((x, y), attr['pos'], unit=Unit.METERS))) #Great circle distance between two coordinates on a earth
                     graph.add_edge(node, str(count), dist=dist)
-            node_data[str(count)] = {'bin_id': bin_id, 'pos': (x, y)}
             count += 1
         else:
             data_drop = True
@@ -79,7 +79,7 @@ def load_graph(graph_name, path=None, location='muc', use_adjacency_matrix=True,
     return graph, node_data
 
 
-def load_subset_from_ordered_nodes(nodes, centeredness=5, directed=True):
+def load_subset_from_ordered_nodes(nodes, centeredness=5, directed=True, randomness=True):
     """
          Loads a subset of valid nodes as a NetworkX graph.
 
@@ -89,6 +89,8 @@ def load_subset_from_ordered_nodes(nodes, centeredness=5, directed=True):
          :return graph: a NetworkX graph representation of the data
          :return node_data: dictionary of additional node information, bin_id and position
     """
+    if not randomness:
+        np.random.seed(1)
 
     if directed:
         graph = nx.DiGraph()
@@ -98,7 +100,9 @@ def load_subset_from_ordered_nodes(nodes, centeredness=5, directed=True):
     node_data = {}
 
     #Load node data
-    data = csv.reader(open('Problem Instances/ordered_nodes.csv', "r"))
+    root = os.path.dirname(os.path.abspath(os.getcwd()))
+    folder = os.path.join(root, 'Problem Instances')
+    data = csv.reader(open(folder + '/ordered_nodes.csv', "r"))
     next(data) #skip header line
     depot_node = next(data)
     source_nodes, sink_nodes = [], []
@@ -115,7 +119,8 @@ def load_subset_from_ordered_nodes(nodes, centeredness=5, directed=True):
 
 
     #Load edge data
-    edge_data = csv.reader(open('MVG Code/adjacency_matrix_muc.csv', 'r'))
+    folder = os.path.join(root, 'MVG Code')
+    edge_data = csv.reader(open(folder + '/adjacency_matrix_muc.csv', 'r'))
     v_ids = next(edge_data)
     for u_pairs in edge_data:
         u_id = u_pairs[0]
@@ -154,6 +159,7 @@ def load_subset_from_ordered_nodes(nodes, centeredness=5, directed=True):
         supply = -1 if supply == 0 else supply
         total_supply += supply
         graph.add_node(str(count), sup=supply)
+        node_data[str(count)] = {'bin_id': bin_id, 'pos': (x, y)}
         for node, data in node_data.items():
             if directed:
                 graph.add_edge(node, str(count), dist=adjacency_dict[bin_id][data['bin_id']])
@@ -161,7 +167,6 @@ def load_subset_from_ordered_nodes(nodes, centeredness=5, directed=True):
             else: #undirected graph takes average distance
                 avg_dist = (adjacency_dict[bin_id][data['bin_id']] + adjacency_dict[data['bin_id']][bin_id])/2
                 graph.add_edge(node, str(count), dist=avg_dist)
-        node_data[str(count)] = {'bin_id': bin_id, 'pos': (x, y)}
 
     #Fix balancing
     imbalance = total_supply
