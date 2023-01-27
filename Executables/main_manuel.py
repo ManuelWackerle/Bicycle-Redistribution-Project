@@ -10,9 +10,6 @@ from load_csv import load_subset_from_ordered_nodes
 from copy import deepcopy
 import numpy as np
 import vns
-import os
-
-
 
 kwargs = {
     'nodes':                42,

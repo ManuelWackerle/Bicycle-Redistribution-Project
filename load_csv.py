@@ -1,11 +1,11 @@
 import os.path
-
 import networkx as nx
 from haversine import haversine, Unit
 import csv
 from utils import *
 import numpy as np
-
+import pickle
+import scipy as sp
 
 def load_graph(graph_name, path=None, location='muc', use_adjacency_matrix=True, truncate_after=-1):
     """
@@ -242,3 +242,67 @@ def load_subset_from_ordered_nodes(nodes, centeredness=5, directed=True, randomn
 #
 #     return graph, node_data
 
+def get_instances_names(filename='instances.pkl', path='Problem Instances/Benchmark Instances/'):
+    with open(path + filename, 'rb') as f:
+        data = pickle.load(f)
+    instances_names = data.keys()
+
+    return instances_names
+def load_from_pickle(instance_name='10Parma30.txt', filename='instances.pkl', path='Problem Instances/Benchmark Instances/', force_balance='none'):
+    graph = nx.DiGraph()
+
+    with open(path + filename, 'rb') as f:
+        data = pickle.load(f)
+    instance = data[instance_name]
+    disbalances = instance['disbalances']
+    adjacency_matrix = instance['adjacency']
+    vehicle_capacity = int(instance['veh_capa'])
+    vehicle_number = int(np.ceil(np.abs(sum(disbalances)) / vehicle_capacity))
+    if vehicle_number == 0:
+        vehicle_number = 1
+
+    num_of_stations = len(disbalances)
+    stations = []
+
+    if force_balance == 'random':
+        overall_disbalance = sum(disbalances)
+        delta_disbalances = [0] * num_of_stations
+        for _ in range(abs(overall_disbalance)):
+            delta_disbalances[np.random.randint(num_of_stations)] -= np.sign(overall_disbalance)
+        disbalances = [x + y for x, y in zip(disbalances, delta_disbalances)]
+
+        for key, disbalance in enumerate(disbalances):
+            station = str(key)
+            graph.add_node(station, sup=disbalance)
+            stations.append(station)
+
+        for key_i, station_i in enumerate(stations):
+            for key_j, station_j in enumerate(stations):
+                graph.add_edge(station_i, station_j, dist=adjacency_matrix[key_i][key_j])
+
+    elif force_balance == 'dummy':
+        for key, disbalance in enumerate(disbalances):
+            station = str(key)
+            graph.add_node(station, sup=disbalance)
+            stations.append(station)
+
+        overall_disbalance = sum(disbalances)
+        disbalances.append(-overall_disbalance)
+
+        for key_i, station_i in enumerate(stations):
+            for key_j, station_j in enumerate(stations):
+                graph.add_edge(station_i, station_j, dist=adjacency_matrix[key_i][key_j])
+
+        dummy_node = str(num_of_stations)
+        stations.append(dummy_node)
+        graph.add_node(dummy_node, sup=-overall_disbalance)
+
+        for key in range(num_of_stations):
+            graph.add_edge(stations[key], dummy_node, dist=adjacency_matrix[0][key])
+            graph.add_edge(dummy_node, stations[key], dist=adjacency_matrix[key][0])
+
+        graph.add_edge(stations[0], dummy_node, dist=0.0001)
+        graph.add_edge(dummy_node, stations[0], dist=0.0001)
+        graph.add_edge(dummy_node, dummy_node, dist=0)
+
+    return graph, vehicle_capacity, vehicle_number
