@@ -947,9 +947,9 @@ def change_nbh_pipe(problem, modified_vehicles, nbh, nbh_last_success:[], ordere
     return nbh
 
 
-def change_nbh_callies(problem, modified_vehicles, nbh, nbh_last_success:[], ordered_nbhs, verbose) -> int:
+def change_nbh_check_all(problem, modified_vehicles, nbh, nbh_last_success:[], ordered_nbhs, verbose) -> int:
     """
-    We proceed in a pipe fashion through neighbourhoods and repeat until no improvement
+    At every iteration all neighbourhoods are checked and the best improvement taken
     """
     original_distance = problem.calculate_distances()
     best_distance = original_distance
@@ -964,7 +964,7 @@ def change_nbh_callies(problem, modified_vehicles, nbh, nbh_last_success:[], ord
     if best_distance == original_distance:
         return len(ordered_nbhs)
     else:
-        return 0
+        return -1
 
 
 def compare_vehicle_routes(a_set_of_routes: [[]], another_set_of_routes: [[]]) -> float:
@@ -989,13 +989,12 @@ def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=c
     """
 
     start_time = time.time()
-    nbh_index = 0
+    nbh_index = 0 if change_nbh != change_nbh_check_all else -1
     nbh_last_success = [0]
     new_vehicle_routes = None
     distance_hist = []
     time_hist = []
     operation_hist = []
-    callies_search = change_nbh == change_nbh_callies
 
     distance_hist.append(problem_instance.calculate_distances())
     time_start = time.time()
@@ -1008,7 +1007,8 @@ def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=c
         problem_instance.remove_unused_stops()
 
         if verbose == 1:
-            print("Searching nbh: ", ordered_nbhs[nbh_index].__name__)
+            name = "all" if nbh_index == -1 else ordered_nbhs[nbh_index].__name__
+            print("Searching nbh: ", name)
             print('(before)  ', end= '')
             problem_instance.display_results(False)
 

@@ -1,9 +1,9 @@
 """
 Implementations of the neighbourhood operators.
 """
-import random
+
 from copy import deepcopy
-from structure import Vehicle, ProblemInstance
+from structure import ProblemInstance
 
 
 def intra_two_opt(prob, tolerance=0):
@@ -22,8 +22,8 @@ def intra_two_opt(prob, tolerance=0):
                     value = prob.model.edges[ri, rj]['dist'] + prob.model.edges[rk, rl]['dist']
                     new_value = prob.model.edges[ri, rk]['dist'] + prob.model.edges[rj, rl]['dist']
                     if prob.model.is_directed():
-                        value += distance_between_stops(prob.model, route, s1 + 1, s2)
-                        new_value += distance_between_stops(prob.model, route, s2, s1 + 1)
+                        value += _distance_between_stops(prob, route, s1 + 1, s2)
+                        new_value += _distance_between_stops(prob, route, s2, s1 + 1)
                     diff = value - new_value
                     if diff > best:
                         best = diff
@@ -97,7 +97,7 @@ def intra_or_opt(prob, tolerance=0):
     return out
 
 
-def inter_segment_swap(prob, max_segment_length=10, tolerance=0):
+def inter_segment_swap(prob, max_segment_length=10):
     swaps = []
     prob.calculate_loading_MF()
 
@@ -152,13 +152,12 @@ def inter_segment_swap(prob, max_segment_length=10, tolerance=0):
                                 if diff > best:
                                     best = diff
                                     m1, m2, a1, b1, a2, b2 = l1, l2, s1, t1, s2, t2
-                        # elif -load_change in load_change_dict: Todo: add reverse insert check
             if best > 0:
                 swaps.append([best, m1, m2, a1, b1, a2, b2])
 
     swaps.sort(reverse=True)
     vehicles = deepcopy(prob.vehicles)
-    valid = [[] for i in range(len(prob.vehicles))]
+    valid = [[] for _ in range(len(prob.vehicles))]
     # Reformat list of swaps and ignore interfering indices
     for s in swaps:
         _, l1, l2, a1, b1, a2, b2 = s
@@ -178,13 +177,15 @@ def inter_segment_swap(prob, max_segment_length=10, tolerance=0):
 
     return vehicles
 
+
 def non_overlapping_old(slices, new_slice):
-    for slice in slices:
-        s, t, _, _, _ = slice
+    for pair in slices:
+        s, t, _, _, _ = pair
         a, b = new_slice
         if b >= s - 1 and a <= t + 1:
             return False
     return True
+
 
 def inter_two_opt(prob, tolerance=0):
     swaps = []
@@ -216,7 +217,6 @@ def inter_two_opt(prob, tolerance=0):
     for s in range(len(swaps)):
         _, r1, r2, b1, b2 = swaps[s]
         if r1 not in used and r2 not in used:
-            # Todo, implement index change tracking so that the other swaps can also be used and delete this check
             v1, v2 = prob.vehicles[r1], prob.vehicles[r2]
             route1 = deepcopy(v1.route())
             route2 = deepcopy(v2.route())
@@ -241,7 +241,7 @@ def intra_two_opt_v2(prob: ProblemInstance, tolerance=0):
     """
     Searches for intra two-opt switches that provide a decrease in route length
     param prob: Problem instance
-    param tolerance: rebalancing tolerance allowed
+    param tolerance: re-balancing tolerance allowed
 
     return swaps: array of possible swaps. A swap is given by [<distance improved>, <swap index 1>, <swap index 2>]
     """
@@ -262,8 +262,8 @@ def intra_two_opt_v2(prob: ProblemInstance, tolerance=0):
                         dist_new = prob.model.edges[ri, rk]['dist'] + prob.model.edges[rj, rl]['dist']
                         diff = dist_old - dist_new
                         if prob.model.is_directed():
-                            dist_old += distance_between_stops(prob.model, route, s1 + 1, s2)
-                            dist_new += distance_between_stops(prob.model, route, s2, s1 + 1)
+                            dist_old += _distance_between_stops(prob, route, s1 + 1, s2)
+                            dist_new += _distance_between_stops(prob, route, s2, s1 + 1)
                         if diff > best:
                             best = diff
                             b1, b2 = s1, s2
@@ -280,8 +280,8 @@ def intra_two_opt_v2(prob: ProblemInstance, tolerance=0):
             if b2 < mn - 1 or mx + 1 < b1:  # ignore interfering swaps
                 prob.verify_loading_on_swapped_route(b1, b2, l, tolerance=tolerance)
                 if prob.allocated >= prob.imbalance - tolerance:
-                    vout = out[l]
-                    vout.set_route(vout.route()[:b1 + 1] + vout.route()[b2:b1:-1] + vout.route()[b2 + 1:])
+                    v_out = out[l]
+                    v_out.set_route(v_out.route()[:b1 + 1] + v_out.route()[b2:b1:-1] + v_out.route()[b2 + 1:])
                     mn, mx = min(b1, mn), max(b2, mx)
     return out
 
@@ -316,7 +316,6 @@ def inter_two_opt_v2(prob: ProblemInstance, tolerance=0):
     for s in swaps:
         _, l1, l2, b1, b2 = s
         if l1 not in used and l2 not in used:
-            # Todo, implement index change tracking so that the other swaps can also be used and delete this check
             prob.verify_loading_on_swapped_route(b1, b2, l1, l2, tolerance=tolerance)
             if prob.allocated >= prob.imbalance - tolerance:
                 v1, v2 = out[l1], out[l2]
@@ -328,25 +327,37 @@ def inter_two_opt_v2(prob: ProblemInstance, tolerance=0):
                 used.add(l2)
     return out
 
-def distance_between_stops(graph, route, stop1, stop2):
+
+#      OLD METHODS - probably should be deleted at some point
+# ======================================================================================================================
+#      UPDATED METHODS - ideally faster and better readable
+
+
+def _distance_between_stops(prob, route, stop1, stop2):
+    """
+    Calculates the directed distance on a route between two stops, stop1 and stop2 can be in reverse
+    """
     dist = 0
     step = 1 if stop1 < stop2 else -1
     for stop in range(stop1, stop2, step):
         u, v = route[stop], route[stop + step]
-        if u != v: #u == v should never happen - this is a quick fix
-            dist += graph.edges[u, v]['dist']
+        dist += prob.distance(u, v)
     return dist
 
 
-def intra_two_opt_fast(prob:ProblemInstance, tolerance=0):
+def _relative_segment_length(prob: ProblemInstance) -> int:
+    return len(prob.model.nodes) // len(prob.vehicles) // 5
+
+
+def intra_two_opt_fast(prob: ProblemInstance):
     """
     Compares edges within the same route and Tests if swapping them reduces the total distance.
     Candidates are collected an executed on a deepcopy of the problem instance in a best improvement first fashion.
     Original Route:       [...   a x > > ... > > y b   ...]
-    Candidates checked:   [...   a y < < ... < < x b   ...]   (Note: inner segment traversed in opposite direction to original)
+    Candidates checked:   [...   a y < < ... < < x b   ...] (Note: inner segment traversed in reverse after swap)
     """
 
-    prob.calculate_loading_MF() #Ensure loading instructions are up to date.
+    prob.calculate_loading_MF()  # Ensure loading instructions are up to date.
     num_vehicles = len(prob.vehicles)
     swaps = [[] for _ in range(num_vehicles)]
     a_best, b_best = 0, 0
@@ -356,32 +367,31 @@ def intra_two_opt_fast(prob:ProblemInstance, tolerance=0):
         route = v.route()
         loads = v.loads()
 
-        #Loop through all candidate edges (a, x)
-        for a_idx in range(1, len(route) - 4):
-            x_idx = a_idx + 1
-            a, x = route[a_idx], route[x_idx]
-            load_a = loads[a_idx]
-            max_load, min_load = max(load_a, loads[x_idx]), min(load_a, loads[x_idx])
+        # Loop through all candidate edges (a, x)
+        for a in range(1, len(route) - 4):
+            x = a + 1
+            a_n, x_n = route[a], route[x]
+            load_a = loads[a]
+            max_load, min_load = max(load_a, loads[x]), min(load_a, loads[x])
             best = 0
 
             # Loop through all candidate edges (y, b)
-            for y_idx in range(x_idx + 1, len(route) - 2):
-                b_idx = y_idx + 1
-                y, b = route[y_idx], route[b_idx]
-                load_y = loads[y_idx]
+            for y in range(x + 1, len(route) - 2):
+                b = y + 1
+                y_n, b_n = route[y], route[b]
+                load_y = loads[y]
 
-                max_load = max(max_load, loads[y_idx])
-                min_load = min(min_load, loads[y_idx])
+                max_load = max(max_load, loads[y])
+                min_load = min(min_load, loads[y])
                 max_load_diff = load_y - max_load
                 min_load_diff = load_y - min_load
                 if load_a + min_load_diff <= v.capacity() and load_a + max_load_diff >= 0:
-
-                    old_dist = prob.distance(a, x) + prob.distance_route_segment(route, x_idx, y_idx) + prob.distance(y, b)
-                    new_dist = prob.distance(a, y) + prob.distance_route_segment(route, y_idx, x_idx) + prob.distance(x, b)
+                    old_dist = prob.distance(a_n, x_n) + prob.distance_route_segment(route, x, y) + prob.distance(y_n, b_n)
+                    new_dist = prob.distance(a_n, y_n) + prob.distance_route_segment(route, y, x) + prob.distance(x_n, b_n)
                     diff = old_dist - new_dist
                     if diff > best:
                         best = diff
-                        a_best, b_best = a_idx, b_idx
+                        a_best, b_best = a, b
                 else:
                     break
 
@@ -392,24 +402,24 @@ def intra_two_opt_fast(prob:ProblemInstance, tolerance=0):
     # Reformat list of swaps and ignore interfering sections in a best first fashion
     valid = [[] for _ in range(num_vehicles)]
     for l, v in enumerate(prob.vehicles):
-        swaps[l].sort(reverse=True) #Prioritse swaps with best improvements
+        swaps[l].sort(reverse=True)  # Prioritise swaps with best improvements
         for s in swaps[l]:
-            _, a_idx, b_idx = s
-            if non_overlapping(valid[l], [a_idx, b_idx]):
-                valid[l].append([a_idx, b_idx])
+            _, a, b = s
+            if _non_overlapping(valid[l], [a, b]):
+                valid[l].append([a, b])
 
     # Execute valid swaps in a deepcopy of vehicles and return it
     vehicles = deepcopy(prob.vehicles)
     for l, swap in enumerate(valid):
         v = vehicles[l]
         for s in swap:
-            a_idx, b_idx = s
+            a, b = s
             route = v.route()
-            v.set_route(route[:a_idx + 1] + route[b_idx - 1:a_idx:-1] + route[b_idx:])
+            v.set_route(route[:a + 1] + route[b - 1:a:-1] + route[b:])
     return vehicles
 
 
-def inter_two_opt_fast(prob, max_length_alteration=5, tolerance=0):
+def inter_two_opt_fast(prob: ProblemInstance, max_length_alteration=-1):
     """
     Compares edges between different routes and Tests if swapping them reduces the total distance.
     Candidates are collected an executed on a deepcopy of the problem instance in a best improvement first fashion.
@@ -420,7 +430,7 @@ def inter_two_opt_fast(prob, max_length_alteration=5, tolerance=0):
     prob.calculate_loading_MF()  # Ensure loading instructions are up to date.
     num_vehicles = len(prob.vehicles)
     swaps = []
-    clip = max_length_alteration
+    clip = _relative_segment_length(prob) // 2 if max_length_alteration < 0 else max_length_alteration
     save_l1, save_l2, best_y, best_b = 0, 0, 0, 0
 
     # Loop through all vehicle combinations
@@ -432,78 +442,82 @@ def inter_two_opt_fast(prob, max_length_alteration=5, tolerance=0):
             loads2 = prob.vehicles[l2].loads()
 
             # Loop through all edge swap combinations within the max length alteration
-            for a_idx in range(1, len(route1) - 3):
-                y_idx = a_idx + 1
-                a, y = route1[a_idx], route1[y_idx]
-                load_a = loads1[a_idx]
+            for a in range(1, len(route1) - 3):
+                y = a + 1
+                a_n, y_n = route1[a], route1[y]
+                load_a = loads1[a]
                 best = 0
-                for x_idx in range(max(a_idx - clip, 1), min(a_idx + clip, len(route2) - 1)):
-                    b_idx = x_idx + 1
-                    x, b = route2[x_idx], route2[b_idx]
-                    load_x = loads2[x_idx]
+                for x in range(max(a - clip, 1), min(a + clip, len(route2) - 1)):
+                    b = x + 1
+                    x_n, b_n = route2[x], route2[b]
+                    load_x = loads2[x]
 
                     if load_x == load_a:
-                        old_dist = prob.distance(a, y)+ prob.distance(x, b)
-                        new_dist = prob.distance(a, b)+ prob.distance(x, y)
+                        old_dist = prob.distance(a_n, y_n) + prob.distance(x_n, b_n)
+                        new_dist = prob.distance(a_n, b_n) + prob.distance(x_n, y_n)
                         diff = old_dist - new_dist
                         if diff > best:
                             best = diff
-                            save_l1, save_l2, best_y, best_b  = l1, l2, y_idx, b_idx
+                            save_l1, save_l2, best_y, best_b = l1, l2, y, b
                 if best > 0:
                     swaps.append([best, save_l1, save_l2, best_y, best_b])
 
-    swaps.sort(reverse=True) # Prioritise swaps with best improvements
+    swaps.sort(reverse=True)  # Prioritise swaps with best improvements
 
     # Reformat list of swaps and ignore interfering sections in a best first fashion
     valid = [[len(prob.vehicles[l].route()) + 1 for l in range(num_vehicles)]]
     for s in swaps:
-        _, l1, l2, y_idx, b_idx = s
-        if y_idx <= valid[0][l1] - 2 and b_idx <= valid[0][l2] - 2:
-            valid.append([l1, l2, y_idx, b_idx])
-            valid[0][l1] = y_idx
-            valid[0][l2] = b_idx
+        _, l1, l2, y, b = s
+        if y <= valid[0][l1] - 2 and b <= valid[0][l2] - 2:
+            valid.append([l1, l2, y, b])
+            valid[0][l1] = y
+            valid[0][l2] = b
 
     # Execute valid swaps in a deepcopy of vehicles and return it
     vehicles = deepcopy(prob.vehicles)
     for s in range(1, len(valid)):
-            l1, l2, y_idx, b_idx = valid[s]
-            v1 = vehicles[l1]
-            v2 = vehicles[l2]
-            route1 = deepcopy(v1.route())
-            route2 = v2.route()
-            v1.set_route(route1[:y_idx] + route2[b_idx:])
-            v2.set_route(route2[:b_idx] + route1[y_idx:])
+        l1, l2, y, b = valid[s]
+        v1 = vehicles[l1]
+        v2 = vehicles[l2]
+        route1 = deepcopy(v1.route())
+        route2 = v2.route()
+        v1.set_route(route1[:y] + route2[b:])
+        v2.set_route(route2[:b] + route1[y:])
     return vehicles
 
 
-def intra_or_opt_fast(prob, tolerance=0):
-    """
-    Deprecated: use instead: intra_segment_swap(<problem>, <segment length>, tolerance=<tolerance>)
-    """
-    intra_segment_swap_fast(prob, 1, tolerance=tolerance)
-
-def segment_swap_difference(prob:ProblemInstance, a1, x1, y1, b1, a2, x2, y2, b2):
-    #We allow segement 2 to be empty
-    if a2 == y2:
-        dist_old = prob.distance(a1, x1) + prob.distance(y1, b1) + prob.distance(a2, x2)
-        dist_new = prob.distance(a1, b1) + prob.distance(a2, x1) + prob.distance(y1, b2)
+def _segment_swap_difference(prob: ProblemInstance, indices):
+    l1, l2, a1, x1, y1, b1, a2, x2, y2, b2 = indices
+    route1, route2 = prob.vehicles[l1].route(), prob.vehicles[l2].route()
+    a_1, x_1, y_1, b_1 = route1[a1], route1[x1], route1[y1], route1[b1]
+    a_2, x_2, y_2, b_2 = route2[a2], route2[x2], route2[y2], route2[b2]
+    dist_old, dist_new = 0, 0
+    
+    if a1 == y1 and a2 == y2:
+        print("WARNING: swapping empty segments - wasted computation. This shouldn't happen.")
+    elif a1 == y1:  # If segment 1 empty
+        dist_old = prob.distance(a_1, b_1) + prob.distance(a_2, x_2) + prob.distance(y_2, b_2)
+        dist_new = prob.distance(a_1, x_2) + prob.distance(y_2, b_1) + prob.distance(a_2, b_2)
+    elif a2 == y2:  # If segment 2 empty
+        dist_old = prob.distance(a_1, x_1) + prob.distance(y_1, b_1) + prob.distance(a_2, b_2)
+        dist_new = prob.distance(a_1, b_1) + prob.distance(a_2, x_1) + prob.distance(y_1, b_2)
     else:
-        dist_old = prob.distance(a1, x1) + prob.distance(y1, b1) \
-                   + prob.distance(a2, x2) + prob.distance(y2, b2)
-        dist_new = prob.distance(a1, x2) + prob.distance(y2, b1) \
-                   + prob.distance(a2, x1) + prob.distance(y1, b2)
+        dist_old = prob.distance(a_1, x_1) + prob.distance(y_1, b_1) + prob.distance(a_2, x_2) + prob.distance(y_2, b_2)
+        dist_new = prob.distance(a_1, x_2) + prob.distance(y_2, b_1) + prob.distance(a_2, x_1) + prob.distance(y_1, b_2)
+        
     return dist_old - dist_new
 
 
-def intra_segment_swap_fast(prob:ProblemInstance, max_segment_length=10, tolerance=0):
+def intra_segment_swap_fast(prob: ProblemInstance, max_segment_length=-1):
     """
-    Compares segments within the same route and Tests if swapping them reduces the total distance
+    Compares segments within the same route and tests if swapping them reduces the total distance.
     Original Route:        [...   a1 x1  * * *  y1 b1    ...    a2 x2  # # #  y2 b2  ...]
     Candidates checked:    [...   a1 x2  # # #  y2 b1    ...    a2 x1  * * *  y1 b2  ...]
     """
     swaps = [[] for _ in prob.vehicles]
-    prob.calculate_loading_MF() #Ensure loading instructions are up to date
+    prob.calculate_loading_MF()  # Ensure loading instructions are up to date
     num_vehicles = len(prob.vehicles)
+    max_segment_length = _relative_segment_length(prob) if max_segment_length < 0 else max_segment_length
     a1_best, b1_best, a2_best, b2_best = 0, 0, 0, 0
 
     # Loop through all routes
@@ -513,40 +527,36 @@ def intra_segment_swap_fast(prob:ProblemInstance, max_segment_length=10, toleran
         last = len(route)
 
         # Loop through all possible segments in route1 and record the loading values at each station
-        for a1_idx in range(last - 4):
-            x1_idx = a1_idx + 1
-            a1, x1 = route[a1_idx], route[x1_idx]
-            load_change_dict = {}
-            load_a1 = loads[a1_idx]
-            for y1_idx in range(x1_idx, min(x1_idx + max_segment_length, last - 3)):
-                load_change_dict[load_a1 - loads[y1_idx]] = y1_idx
+        for a1 in range(last - 4):
+            x1 = a1 + 1
+            load_change_dict = {0: a1}
+            load_a1 = loads[a1]
+            for y1 in range(x1, min(x1 + max_segment_length, last - 3)):
+                load_change_dict[load_a1 - loads[y1]] = y1
 
             # Loop through all possible swap segments within the same route
             best = 0
-            for a2_idx in range(x1_idx + 2, last - 2):
-                x2_idx = a2_idx + 1
-                a2, x2 = route[a2_idx], route[x2_idx]
-                load_a2 = loads[a2_idx]
-
-                for y2_idx in range(a2_idx, min(x2_idx + max_segment_length, last - 1)):
-                    b2_idx = y2_idx + 1
-                    load_change = load_a2 - loads[y2_idx]
+            for a2 in range(x1 + 2, last - 2):
+                x2 = a2 + 1
+                load_a2 = loads[a2]
+                for y2 in range(a2, min(x2 + max_segment_length, last - 1)):
+                    b2 = y2 + 1
+                    load_change = load_a2 - loads[y2]
                     if load_change in load_change_dict:
-                        y1_idx = load_change_dict[load_change]
-                        b1_idx = y1_idx + 1
-                        if b1_idx <= a2_idx:
-                            max_load1 = max(loads[a1_idx:b1_idx]) - load_a1
-                            min_load1 = min(loads[a1_idx:b1_idx]) - load_a1
-                            max_load2 = max(loads[a2_idx:b2_idx]) - load_a2
-                            min_load2 = min(loads[a2_idx:b2_idx]) - load_a2
+                        y1 = load_change_dict[load_change]
+                        b1 = y1 + 1
+                        if b1 <= a2 and (a1 != y1 or a2 != y2):
+                            max_load1 = max(loads[a1:b1]) - load_a1
+                            min_load1 = min(loads[a1:b1]) - load_a1
+                            max_load2 = max(loads[a2:b2]) - load_a2
+                            min_load2 = min(loads[a2:b2]) - load_a2
                             if load_a2 + max_load1 <= v.capacity() and load_a2 + min_load1 >= 0 and \
                                     load_a1 + max_load2 <= v.capacity() and load_a1 + min_load2 >= 0:
-                                y1, b1 = route[y1_idx], route[b1_idx]
-                                y2, b2 = route[y2_idx], route[b2_idx]
-                                diff = segment_swap_difference(prob, a1, x1, y1, b1, a2, x2, y2, b2)
+
+                                diff = _segment_swap_difference(prob, [l, l, a1, x1, y1, b1, a2, x2, y2, b2])
                                 if diff > best:
                                     best = diff
-                                    a1_best, b1_best, a2_best, b2_best = a1_idx, b1_idx, a2_idx, b2_idx
+                                    a1_best, b1_best, a2_best, b2_best = a1, b1, a2, b2
                             else:
                                 break
             if best > 0:
@@ -558,7 +568,7 @@ def intra_segment_swap_fast(prob:ProblemInstance, max_segment_length=10, toleran
         swaps[l].sort(reverse=True)
         for s in swaps[l]:
             _, a1, b1, a2, b2 = s
-            if non_overlapping(valid[l], [a1, b1]) and non_overlapping(valid[l], [a2, b2]):
+            if _non_overlapping(valid[l], [a1, b1]) and _non_overlapping(valid[l], [a2, b2]):
                 valid[l].append([a1, b1, a2, b2])
                 valid[l].append([a2, b2, a1, b1])
 
@@ -575,39 +585,36 @@ def intra_segment_swap_fast(prob:ProblemInstance, max_segment_length=10, toleran
     return vehicles
 
 
-def inter_segment_swap_fast(prob:ProblemInstance, max_segment_length=10, tolerance=0):
+def inter_segment_swap_fast(prob: ProblemInstance, max_segment_length=10):
     """
-    Compares segments within the same route and Tests if swapping them reduces the total distance
+    Compares segments within the same route and tests if swapping them reduces the total distance.
     Original Routes:       [...   a1 x1  * * *  y1 b1   ...]  [...   a2 x2  # # #  y2 b2  ...]
     Candidates checked:    [...   a1 x2  # # #  y2 b1   ...]  [...   a2 x1  * * *  y1 b2  ...]
     """
     swaps = []
-    prob.calculate_loading_MF() #Ensure loading instructions are up to date
-    vehicle_indices = list(range(len(prob.vehicles)))
-    random.shuffle(vehicle_indices)
-    visited = 0
+    prob.calculate_loading_MF()  # Ensure loading instructions are up to date
+    num_vehicles = len(prob.vehicles)
+    max_segment_length = _relative_segment_length(prob) if max_segment_length < 0 else max_segment_length
     save_l1, save_l2, a1_best, b1_best, a2_best, b2_best = 0, 0, 0, 0, 0, 0
 
     # Loop through all candidate route1
-    for l1 in vehicle_indices[:-2]:
-        visited += 1
+    for l1 in range(num_vehicles - 1):
         v1 = prob.vehicles[l1]
         route1 = v1.route()
         loads1 = v1.loads()
         last1 = len(route1)
 
         # Loop through all possible segments in route1 and record the loading values at each station
-        for a1_idx in range(1, last1 - 2):
-            x1_idx = a1_idx + 1
-            a1, x1 = route1[a1_idx], route1[x1_idx]
-            load_change_dict = {}
-            load1 = loads1[a1_idx]
+        for a1 in range(1, last1 - 2):
+            x1 = a1 + 1
+            load_change_dict = {0: a1}
+            load1 = loads1[a1]
 
-            for y1_idx in range(x1_idx, min(x1_idx + max_segment_length, last1 - 1)):
-                load_change_dict[load1 - loads1[y1_idx]] = y1_idx
+            for y1 in range(x1, min(x1 + max_segment_length, last1 - 1)):
+                load_change_dict[load1 - loads1[y1]] = y1
 
             # Loop through all candidate route2
-            for l2 in vehicle_indices[visited:]:
+            for l2 in range(l1 + 1, num_vehicles):
                 v2 = prob.vehicles[l2]
                 route2 = v2.route()
                 loads2 = v2.loads()
@@ -615,48 +622,44 @@ def inter_segment_swap_fast(prob:ProblemInstance, max_segment_length=10, toleran
 
                 # Loop through all possible segments in route2 and look for matching load changes
                 best = 0
-                for a2_idx in range(1, last2 - 2):
-                    x2_idx = a2_idx + 1
-                    a2, x2 = route2[a2_idx], route2[x2_idx]
-                    load2 = loads2[a2_idx]
+                for a2 in range(1, last2 - 2):
+                    x2 = a2 + 1
+                    load2 = loads2[a2]
 
-                    for y2_idx in range(a2_idx, min(a2_idx + max_segment_length, last2 - 1)):
-                        b2_idx = y2_idx + 1
-                        load_change = load2 - loads2[y2_idx]
+                    for y2 in range(a2, min(a2 + max_segment_length, last2 - 1)):
+                        b2 = y2 + 1
+                        load_change = load2 - loads2[y2]
 
                         # Verify that segments have equal load change and swapping does not exceed capacity constraints
                         if load_change in load_change_dict:
-                            y1_idx = load_change_dict[load_change]
-                            b1_idx = y1_idx + 1
-                            max_load1 = max(loads1[a1_idx:b1_idx]) - load1
-                            min_load1 = min(loads1[a1_idx:b1_idx]) - load1
-                            max_load2 = max(loads2[a2_idx:b2_idx]) - load2
-                            min_load2 = min(loads2[a2_idx:b2_idx]) - load2
-                            if load2 + max_load1 <= v2.capacity() and load2 + min_load1 >= 0 and \
-                                    load1 + max_load2 <= v1.capacity() and load1 + min_load2 >= 0:
-                                y1, b1 = route1[y1_idx], route1[b1_idx]
-                                y2, b2 = route2[y2_idx], route2[b2_idx]
-                                odd = a1, x1, y1, b1, a2, x2, y2, b2
-                                if a1 == '0' and b1 == '0' or a2 == '0' and x1 == '0' or y1 == '0' and b2 == '0':
-                                    print("We're are once again Fucked")
-                                diff = segment_swap_difference(prob, a1, x1, y1, b1, a2, x2, y2, b2)
-                                if diff > best:
-                                    best = diff
-                                    save_l1, save_l2 = l1, l2
-                                    a1_best, b1_best, a2_best, b2_best = a1_idx, b1_idx, a2_idx, b2_idx
-                            else:
-                                break
+                            y1 = load_change_dict[load_change]
+                            b1 = y1 + 1
+                            if a1 != y1 or a2 != y2:
+                                max_load1 = max(loads1[a1:b1]) - load1
+                                min_load1 = min(loads1[a1:b1]) - load1
+                                max_load2 = max(loads2[a2:b2]) - load2
+                                min_load2 = min(loads2[a2:b2]) - load2
+                                if load2 + max_load1 <= v2.capacity() and load2 + min_load1 >= 0 and \
+                                        load1 + max_load2 <= v1.capacity() and load1 + min_load2 >= 0:
+
+                                    diff = _segment_swap_difference(prob, [l1, l2, a1, x1, y1, b1, a2, x2, y2, b2])
+                                    if diff > best:
+                                        best = diff
+                                        save_l1, save_l2 = l1, l2
+                                        a1_best, b1_best, a2_best, b2_best = a1, b1, a2, b2
+                                else:
+                                    break
                 if best > 0:
                     swaps.append([best, save_l1, save_l2, a1_best, b1_best, a2_best, b2_best])
 
     swaps.sort(reverse=True)
     vehicles = deepcopy(prob.vehicles)
-    valid = [[] for i in range(len(prob.vehicles))]
+    valid = [[] for _ in range(len(prob.vehicles))]
 
     # Reformat list of swaps and ignore interfering indices
     for s in swaps:
         _, l1, l2, a1, b1, a2, b2 = s
-        if non_overlapping(valid[l1], [a1, b1]) and non_overlapping(valid[l2], [a2, b2]):
+        if _non_overlapping(valid[l1], [a1, b1]) and _non_overlapping(valid[l2], [a2, b2]):
             valid[l1].append([a1, b1, l2, a2, b2])
             valid[l2].append([a2, b2, l1, a1, b1])
 
@@ -672,7 +675,7 @@ def inter_segment_swap_fast(prob:ProblemInstance, max_segment_length=10, toleran
     return vehicles
 
 
-def non_overlapping(slices, new_slice):
+def _non_overlapping(slices, new_slice):
     """Determines if a new index pair overlaps with any of the indexes in the given set
         [...      x - - - y      ...] index pair in slices
         [...    a b              ...] Overlap

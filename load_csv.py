@@ -23,11 +23,13 @@ def load_graph(graph_name, path=None, location='muc', use_adjacency_matrix=True,
     # munich_lat = [46.8, 49.5]
     # munich_long = [10.1, 13.1]
 
-
+    root = os.path.dirname(os.path.abspath(os.getcwd()))
+    folder_mvg = os.path.join(root, 'MVG Code/')
+    folder_p_instances = os.path.join(root, 'Problem Instances/')
     adjacency_dict = {}
     if use_adjacency_matrix:
         graph = nx.DiGraph()
-        edge_data = csv.reader(open('MVG Code/adjacency_matrix_' + location + '.csv', 'r'))
+        edge_data = csv.reader(open(folder_mvg + 'adjacency_matrix_' + location + '.csv', 'r'))
         v_ids = next(edge_data)
         for u_pairs in edge_data:
             u_id = u_pairs[0]
@@ -38,10 +40,7 @@ def load_graph(graph_name, path=None, location='muc', use_adjacency_matrix=True,
     else:
         graph = nx.Graph()
 
-    if path is None:
-        data = csv.reader(open('Problem Instances/' + graph_name + '.csv', "r"))
-    else:
-        data = csv.reader(open(os.path.join(path, graph_name + '.csv'), "r"))
+    data = csv.reader(open(folder_p_instances + graph_name + '.csv', "r"))
 
     data_drop = False
     node_data = {}

@@ -3,6 +3,7 @@ from copy import deepcopy
 from load_csv import *
 from structure import ProblemInstance, Vehicle
 import vns
+import operators as ops
 import csv
 import time
 
@@ -14,6 +15,8 @@ import time
     # graph_size_step = 10
     # graph_variations = 10
     # trials_per_graph = 10
+    # ordered_nbhs = [ops.intra_segment_swap_fast, ops.intra_two_opt_fast, ops.inter_segment_swap_fast, ops.inter_two_opt_fast] # vns.remove_and_insert_station]
+    # nbh_change_set = [vns.change_nbh_pipe, vns.change_nbh_sequential, vns.change_nbh_check_all]
     # run_test(num_vehicles, capacity, min_graph_size, max_graph_size, graph_size_step, graph_variations, trials_per_graph)
 
 
@@ -23,68 +26,85 @@ def run_test(num_vehicles,
              max_graph_size,
              graph_size_step,
              graph_variations,
-             trials_per_graph):
+             trials_per_graph,
+             ordered_nbhs,
+             nbh_change_set,):
 
     now = datetime.datetime.now()
-    writer = csv.writer(open('Saved/statistics/stats_' + now.strftime("%d-%m-%y_%H-%M-%S") + '.csv', 'w', newline=''), delimiter=',')
-    writer.writerow(["graph_size", "graph_instance", "trial", "greedy_distance", "vns_distance", "improvement", "vns_time"])
+    root = os.path.dirname(os.path.abspath(os.getcwd()))
+    folder = os.path.join(root, 'Saved/statistics/')
+    file = open(folder + 'stats_' + now.strftime("%d-%m-%y_%H-%M-%S") + '.csv', 'w', newline='')
+    writer = csv.writer(file, delimiter=',')
+    hparams = [num_vehicles, capacity, min_graph_size, max_graph_size, graph_size_step, graph_variations, trials_per_graph]
+    headings = ["graph_size", "graph_instance", "trial", "greedy_distance"]
+    for nbh_change in nbh_change_set:
+        if nbh_change == vns.change_nbh_cyclic:
+            headings.append("vns_cyclic_distance")
+            headings.append("vns_cyclic_time")
+            hparams.append("tested cyclic")
+        elif nbh_change == vns.change_nbh_pipe:
+            headings.append("vns_pipe_distance")
+            headings.append("vns_pipe_time")
+            hparams.append("tested pipe")
+        elif nbh_change == vns.change_nbh_sequential:
+            headings.append("vns_seq_distance")
+            headings.append("vns_seq_time")
+            hparams.append("tested sequential")
+        elif nbh_change == vns.change_nbh_check_all:
+            headings.append("vns_all_distance")
+            headings.append("vns_all_time")
+            hparams.append("tested nbh_change_all")
+        else:
+            print("Error, nbh_change method not recognised")
+            raise ValueError
+    writer.writerow(hparams)
+    writer.writerow(headings)
     count = 0
     for n in range(min_graph_size, max_graph_size + 1, graph_size_step):
         gdt, vdt, imt, tmt = 0, 0, 0, 0
         print("\nTEST {}. Problem has {} nodes and {} vehicles with capacity {}"
               .format(count, n, num_vehicles, capacity))
-        print("       | greedy dist  | vns distance |  vns time  | improved |")
+        print("       | greedy dist  | vns distance |  vns time  | improved |  change_nbh_method")
         count += 1
 
         for m in range(graph_variations): #try different graph variations
             #Load Problem Instance
-            graph, node_info = load_subset_from_ordered_nodes(nodes=n, centeredness=m/2+1)
+            graph, node_info = load_subset_from_ordered_nodes(nodes=n, centeredness=m+1)
 
             vehicles = [Vehicle(capacity=capacity, vehicle_id=str(i)) for i in range(num_vehicles)]
             problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=1)
+
             print("--------- new graph ----------")
-
-
             for trial in range(trials_per_graph):
-                start1 = time.time()
                 vns.greedy_routing_v1(problem, dist_weight=2, randomness=True)
-                greedy_routes = deepcopy(problem.get_all_routes())
-
                 greedy_distance = problem.calculate_distances()
+                saved_problem = deepcopy(problem)
 
-                ordered_nbhs = [vns.intra_two_opt_v2, vns.inter_two_opt_v2, vns.intra_or_opt] # vns.remove_and_insert_station]
-                step1 = time.time()
-                vns.general_variable_nbh_search(problem, ordered_nbhs, change_nbh=vns.change_nbh_sequential, timeout=300, verbose=0)
-                end1 = time.time()
-                distance = problem.calculate_distances()
-                # visualize_routes(problem.get_all_routes(), node_info)
+                gd = round(greedy_distance) / 1000
+                results = [n, m, trial, ]
 
+                for nbh_change in nbh_change_set:
+                    problem = deepcopy(saved_problem)
 
-                # problem.display_results(False)
+                    start1 = time.time()
+                    vns.general_variable_nbh_search(problem, ordered_nbhs, change_nbh=nbh_change, timeout=300, verbose=0)
+                    end1 = time.time()
+                    distance = problem.calculate_distances()
 
+                    vd = round(distance) / 1000
+                    vt = round(end1 - start1, 3)
+                    results.append(vd)
+                    results.append(vt)
 
-                gd = round(greedy_distance)/1000
-                vd = round(distance)/1000
-                im = round((1 - distance / greedy_distance) * 100, 1)
-                tm = round(end1 - step1, 3)
-                writer.writerow([n, m, trial, gd, vd, im, tm])
-                gdt += gd
-                vdt += vd
-                imt += im
-                tmt += tm
-                print("{:5}: |{:11}km |{:11}km |{:10}s |{:8}% |".format(m * trials_per_graph + trial, gd, vd, tm, im))
+                    im = round((1 - distance / greedy_distance) * 100, 1)
+                    print("{:5}: |{:11}km |{:11}km |{:10}s |{:8}% |  {}"
+                          .format(m * trials_per_graph + trial, gd, vd, vt, im, nbh_change.__name__))
 
-                if im > 25:
-                    visualize_routes(greedy_routes, node_data=node_info)
-                    visualize_routes(problem.get_all_routes(), node_info)
-
-                    visualize_routes_go(greedy_routes, node_data=node_info)
-                    visualize_routes_go(problem.get_all_routes(), node_info)
-
+                writer.writerow(results)
                 problem.reset()
-
-        gdt = round(gdt/trials_per_graph/graph_variations, 3)
-        vdt = round(vdt/trials_per_graph/graph_variations, 3)
-        imt = round(imt/trials_per_graph/graph_variations, 3)
-        tmt = round(tmt/trials_per_graph/graph_variations, 3)
-        print("AVG -  |{:11}km |{:11}km |{:10}s |{:8}% |".format(gdt, vdt, tmt, imt))
+        file.flush()
+        # gdt = round(gdt/trials_per_graph/graph_variations, 3)
+        # vdt = round(vdt/trials_per_graph/graph_variations, 3)
+        # imt = round(imt/trials_per_graph/graph_variations, 3)
+        # tmt = round(tmt/trials_per_graph/graph_variations, 3)
+        # print("AVG -  |{:11}km |{:11}km |{:10}s |{:8}% |".format(gdt, vdt, tmt, imt))
