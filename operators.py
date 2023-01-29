@@ -840,6 +840,7 @@ def remove_worst_meta_generator(vehicles, graph, num_removal=5, mode='worst', me
         """
     idxes = []
     distance_to_visit = []
+    route_distance = []
 
     candidate = deepcopy(vehicles)
 
@@ -857,6 +858,14 @@ def remove_worst_meta_generator(vehicles, graph, num_removal=5, mode='worst', me
             distance_to_visit.append(
                 graph.edges[station_pre, station][metric] + graph.edges[station, station_post][metric])
 
+            dist = 0
+            route = vehicles[i].route()
+            prev = route[0]
+            for s in range(1, len(route)):
+                dist += graph.edges[prev, route[s]][metric]
+                prev = route[s]
+            route_distance.append(dist)
+
     if mode == 'worst':
         # sort the idxes according to their distance
         sorting_args = np.argsort(np.array(distance_to_visit))[::-1]
@@ -865,6 +874,17 @@ def remove_worst_meta_generator(vehicles, graph, num_removal=5, mode='worst', me
     elif mode == 'random':
         # uniform distribution
         meta_parameter = 1
+    elif mode == 'distance':
+        # first, sort by distance improvement
+        sorting_args = np.argsort(np.array(distance_to_visit))[::-1]
+        idxes = np.array(idxes)
+        idxes = idxes[sorting_args].tolist()
+        # second, sort by distance of the respective route
+        sorting_args = np.argsort(np.array(route_distance))[::-1]
+        idxes = np.array(idxes)
+        idxes = idxes[sorting_args].tolist()
+
+
     else:
         print(str(mode) + 'mode is not available. The ^worst^ mode is set.')
         sorting_args = np.argsort(np.array(distance_to_visit))[::-1]
@@ -1332,6 +1352,36 @@ def destroy_rebuild(problem_instance, num_removal=3, verbose=0):
     # if there is no candidate, return original
     return problem_instance.vehicles
 
+def destroy_local(problem_instance, num_removal=3, num_removal_change_step = 5, verbose=1, timeout=10):
+    """Destroy operator.
+
+    return
+        vehicles
+    """
+    copied_problem_instance = deepcopy(problem_instance)
+    # the initial insert ratio
+    num_removal_current = num_removal
+    counter = 0
+    start_time = time.time()
+    for removed_vehicles in remove_worst_meta_generator(copied_problem_instance.vehicles,
+                                                        copied_problem_instance.model.copy(), mode='distance', meta_parameter=2,
+                                                        num_removal=num_removal):
+        unbalanced_stations = get_unbalanced_stations(copied_problem_instance, removed_vehicles)
+
+        couter += 1
+        if counter % num_removal_change_step == 0 and num_removal_current > 1:
+            # try to remove less stations next time, so there is a higher change to obtain a feasible solution
+            num_removal_current -= 1
+
+        if not unbalanced_stations:
+            # if removal neighbor routes are possibly balanced, return them
+            return removed_vehicles
+
+        if time.time() - start_time > timeout:
+            break
+
+    # if there is no candidate, return original
+    return problem_instance.vehicles
 
 def multi_remove_and_insert_station(problem_instance, num_removal=1):
     copied_problem_instance = deepcopy(problem_instance)
