@@ -11,7 +11,7 @@ class Vehicle(object):
     """
     Vehicle: contains vehicle identification, capacity and vehicle route .
     """
-    def __init__(self, capacity: int, vehicle_id: str):
+    def __init__(self, capacity: int, vehicle_id: str, distance_limit: int):
         """
         Initializes the vehicle
         :param capacity: Maximum number of bikes that the vehicle can carry at any time
@@ -25,6 +25,7 @@ class Vehicle(object):
         self._current_position = None
         self._current_load = 0
         self._modified = True
+        self._distance_limit = distance_limit
 
     def add_stop(self, stop, load):
         self._route.append(stop)
@@ -67,6 +68,9 @@ class Vehicle(object):
 
     def id(self):
         return self._id
+
+    def distance_limit(self):
+        return self._distance_limit
 
     def reset(self):
         self._route = []
@@ -163,6 +167,21 @@ class ProblemInstance:
             prev = vehicle.route()[s]
         vehicle.set_distance = dist
         return dist
+
+    def check_distance_limits(self):
+        """check distance limit for all vehicles
+
+        Returns:
+            Bool: Result of feasibility check for all vehicles
+            List: Distance for each vehicles
+        """
+        distances = []
+        constraint = []
+        for vehicle in self.vehicles:
+            dist = self.calculate_distance(vehicle)
+            distances.append(dist)
+            constraint.append(dist <= vehicle.distance_limit())
+        return all(constraint), distances
 
     def get_all_capacities(self) -> dict:
         """

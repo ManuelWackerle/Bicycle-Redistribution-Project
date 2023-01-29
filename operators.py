@@ -1292,8 +1292,8 @@ def destroy_rebuild(problem_instance, num_removal=3, verbose=0):
     """
     start_time_outer = time.time()
     copied_problem_instance = deepcopy(problem_instance)
-    print('Distance before applying the LN: '
-          + str(copied_problem_instance.calculate_distances()) + '.')
+    # print('Distance before applying the LN: '
+    #       + str(copied_problem_instance.calculate_distances()) + '.')
 
     # the initial insert ratio
     insert_ratio = 0.5

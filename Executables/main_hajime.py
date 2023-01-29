@@ -17,6 +17,7 @@ import os
 import numpy as np
 import vns
 from matplotlib import pyplot as plt
+from statistics import stdev
 
 kwargs = {
     'nodes': 250,
@@ -24,13 +25,14 @@ kwargs = {
     'number_of_vehicles': 5,
     'vehicle_capacity': 20,
     'ordered_nbhs': [ops.inter_two_opt, ops.intra_two_opt, ops.intra_or_opt, ops.multi_remove_and_insert_station],
-    'ordered_large_nbhs': [5, 10, 15, 20, 25],
+    'ordered_large_nbhs': [1, 3, 5, 7, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100],
     'local_timeout': 2*60,  # second
     'large_timeout': 60*60,  # second
     'show_instruction': False,
     'show_each_distance': False,
     'local_verbose': 0,
-    'large_verbose': 1,
+    'large_verbose': 0,
+    'distance_limit': 200000,  # meter
 }
 
 """
@@ -39,8 +41,9 @@ Use this file to load, test and run different solution approaches on the data.
 # instances_dir = os.path.relpath('..\\..\\Problem Instances', os.path.dirname(os.path.abspath(os.getcwd())))
 # instance = "sample_graph_03.csv"
 # graph, node_info = load_subset_from_ordered_nodes(nodes=kwargs['nodes'], centeredness=kwargs["centeredness"])
-graph, node_info = load_subset_from_ordered_nodes(nodes=kwargs['nodes'], centeredness=kwargs["centeredness"], randomness=False)
-vehicles = [Vehicle(capacity=kwargs['vehicle_capacity'], vehicle_id=str(i)) for i in range(kwargs['number_of_vehicles'])]
+graph, node_info = load_subset_from_ordered_nodes(nodes=kwargs['nodes'], centeredness=kwargs["centeredness"], randomness=True)
+vehicles = [Vehicle(capacity=kwargs['vehicle_capacity'], vehicle_id=str(i), distance_limit=kwargs["distance_limit"])
+            for i in range(kwargs['number_of_vehicles'])]
 
 # Mount problem instance with and without zero demand nodes
 problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)
@@ -70,8 +73,21 @@ distance_hist_lns, time_hist_lns, operation_hist_lns, time_shake, shake_effect =
                                                                                                       local_verbose=kwargs["local_verbose"],
                                                                                                       large_verbose=kwargs["large_verbose"]
                                                                                                       )
-problem.display_results(kwargs["show_instruction"])
 
+print("*** Final result using LNS destroy_rebuild***")
+print(f"Time taken {(time.time() - start_lns)/60} [m]")
+print("Reduction: ", (-problem_copy.calculate_distances() + initial_dist) / initial_dist * 100, "%")
+problem_copy.display_results(kwargs["show_instruction"])
+if kwargs["show_each_distance"]:
+    for i, vehicle in enumerate(problem_copy.vehicles):
+        print(f"Vehicle {i} has distance {round(problem_copy.calculate_distance(vehicle)/1000, 5)} km")
+
+constraint, distances = problem_copy.check_distance_limits()
+distances = [x/1000 for x in distances]
+
+print(f"Mean {round(sum(distances)/len(distances), 3)}, Std {round(stdev(distances), 3)}")
+if not constraint:
+    print("Feasible constraint is not satisfied.")
 
 
 """
@@ -90,13 +106,20 @@ distance_hist_lns_multi, time_hist_lns_multi, operation_hist_lns_multi, time_sha
                                                                                                       local_verbose=kwargs["local_verbose"],
                                                                                                       large_verbose=kwargs["large_verbose"]
                                                                                                       )
-print("*** Final result using LNS ***")
+print("*** Final result using LNS multi_remove***")
 print(f"Time taken {(time.time() - start_mlt)/60} [m]")
 print("Reduction: ", (-problem_copy.calculate_distances() + initial_dist) / initial_dist * 100, "%")
-problem.display_results(kwargs["show_instruction"])
+problem_copy.display_results(kwargs["show_instruction"])
 if kwargs["show_each_distance"]:
     for i, vehicle in enumerate(problem_copy.vehicles):
         print(f"Vehicle {i} has distance {round(problem_copy.calculate_distance(vehicle)/1000, 5)} km")
+
+constraint, distances = problem_copy.check_distance_limits()
+distances = [x/1000 for x in distances]
+
+print(f"Mean {round(sum(distances)/len(distances), 3)}, Std {round(stdev(distances), 3)}")
+if not constraint:
+    print("Feasible constraint is not satisfied.")
 
 """
 VNS
@@ -116,6 +139,13 @@ problem_copy.display_results(kwargs["show_instruction"])
 if kwargs["show_each_distance"]:
     for i, vehicle in enumerate(problem_copy.vehicles):
         print(f"Vehicle {i} has distance {round(problem_copy.calculate_distance(vehicle)/1000, 5)} km")
+
+constraint, distances = problem_copy.check_distance_limits()
+distances = [x/1000 for x in distances]
+
+print(f"Mean {round(sum(distances)/len(distances), 3)}, Std {round(stdev(distances), 3)}")
+if not constraint:
+    print("Feasible constraint is not satisfied.")
 
 
 plt.plot([x/60 for x in time_hist], [x / 1000 for x in distance_hist], color='black', label="bare-vns", zorder=-1, lw=3)
