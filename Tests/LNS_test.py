@@ -8,12 +8,12 @@ import os
 import numpy as np
 import vns
 import matplotlib.pyplot as plt
-
+import operators as op
 """
 Use this file to load, test and run different solution approaches on the data.
 """
 instances_dir = os.path.relpath('..\\..\\Problem Instances', os.path.dirname(os.path.abspath(os.getcwd())))
-instance = "sample_graph_03.csv"
+instance = "sample_graph_02.csv"
 graph, node_info = load_subset_from_ordered_nodes(nodes=50, centeredness=5)
 # graph, node_info = load_graph(os.path.splitext(instance)[0], path=instances_dir, use_adjacency_matrix=False)
 instance_size = graph.number_of_nodes()
@@ -21,7 +21,7 @@ instance_size = graph.number_of_nodes()
 # Input vehicle information.
 vehicles = []
 for i in range(5):
-    vehicles.append(Vehicle(capacity=20, vehicle_id=str(i)))
+    vehicles.append(Vehicle(capacity=20, vehicle_id=str(i), distance_limit=10000))
 
 # Mount problem instance with and without zero demand nodes
 problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)
@@ -32,7 +32,7 @@ problem_copy = deepcopy(problem)
 initial_dist = problem.calculate_distances()
 
 # Define local neighbours
-ordered_nbhs = [vns.inter_two_opt, vns.intra_two_opt, vns.intra_or_opt, vns.remove_and_insert_station]
+ordered_nbhs = [op.intra_two_opt, op.intra_or_opt, op.remove_and_insert_station]
 destruction_degrees = [0.1, 0.15, 0.30, 0.50]
 ordered_large_nbhs = [int(np.floor(instance_size * element)) for element in destruction_degrees]
 
