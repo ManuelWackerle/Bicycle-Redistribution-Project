@@ -926,8 +926,13 @@ def change_nbh_cyclic(problem, modified_vehicles, nbh, nbh_last_success, ordered
     if problem.calculate_distances() > problem.calculate_distances(modified_vehicles):
         print("Changing from neighbourhood ", nbh, "to neighbourhood ", nbh + 1) if verbose == 1 else None
         problem.vehicles = modified_vehicles
+        nbh_last_success[0] = nbh
 
-    return (nbh + 1) % len(ordered_nbhs)
+    nbh = (nbh + 1) % len(ordered_nbhs)
+    if nbh == nbh_last_success[0]:
+        nbh = len(ordered_nbhs)
+
+    return nbh
 
 
 def change_nbh_pipe(problem, modified_vehicles, nbh, nbh_last_success:[], ordered_nbhs, verbose) -> int:

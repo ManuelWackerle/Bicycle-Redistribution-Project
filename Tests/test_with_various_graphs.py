@@ -20,45 +20,48 @@ import time
     # run_test(num_vehicles, capacity, min_graph_size, max_graph_size, graph_size_step, graph_variations, trials_per_graph)
 
 
-def run_test(num_vehicles,
-             capacity,
-             min_graph_size,
-             max_graph_size,
-             graph_size_step,
-             graph_variations,
-             trials_per_graph,
-             ordered_nbhs,
-             nbh_change_set,):
+def run_test(kwargs):
+    num_vehicles = kwargs['num_vehicles']
+    capacity = kwargs['capacity']
+    min_graph_size = kwargs['min_graph_size']
+    max_graph_size = kwargs['max_graph_size']
+    graph_size_step = kwargs['graph_size_step']
+    graph_variations = kwargs['graph_variations']
+    trials_per_graph = kwargs['trials_per_graph']
+    ordered_nbhs = kwargs['ordered_nbhs']
+    nbh_change_set = kwargs['nbh_change_set']
 
     now = datetime.datetime.now()
     root = os.path.dirname(os.path.abspath(os.getcwd()))
     folder = os.path.join(root, 'Saved/statistics/')
     file = open(folder + 'stats_' + now.strftime("%d-%m-%y_%H-%M-%S") + '.csv', 'w', newline='')
     writer = csv.writer(file, delimiter=',')
-    hparams = [num_vehicles, capacity, min_graph_size, max_graph_size, graph_size_step, graph_variations, trials_per_graph]
+    for key, value in kwargs.items():
+        writer.writerow([key, value])
+
     headings = ["graph_size", "graph_instance", "trial", "greedy_distance"]
     for nbh_change in nbh_change_set:
         if nbh_change == vns.change_nbh_cyclic:
             headings.append("vns_cyclic_distance")
             headings.append("vns_cyclic_time")
-            hparams.append("tested cyclic")
+
         elif nbh_change == vns.change_nbh_pipe:
             headings.append("vns_pipe_distance")
             headings.append("vns_pipe_time")
-            hparams.append("tested pipe")
+
         elif nbh_change == vns.change_nbh_sequential:
             headings.append("vns_seq_distance")
             headings.append("vns_seq_time")
-            hparams.append("tested sequential")
+
         elif nbh_change == vns.change_nbh_check_all:
             headings.append("vns_all_distance")
             headings.append("vns_all_time")
-            hparams.append("tested nbh_change_all")
+
         else:
             print("Error, nbh_change method not recognised")
             raise ValueError
-    writer.writerow(hparams)
     writer.writerow(headings)
+
     count = 0
     for n in range(min_graph_size, max_graph_size + 1, graph_size_step):
         gdt, vdt, imt, tmt = 0, 0, 0, 0
@@ -69,7 +72,8 @@ def run_test(num_vehicles,
 
         for m in range(graph_variations): #try different graph variations
             #Load Problem Instance
-            graph, node_info = load_subset_from_ordered_nodes(nodes=n, centeredness=m+1)
+            graph, node_info = load_subset_from_ordered_nodes(nodes=n, centeredness=m+5)
+            # graph, node_info = load_graph('nyc_instance_dummy', location='nyc_dummy')
 
             vehicles = [Vehicle(capacity=capacity, vehicle_id=str(i)) for i in range(num_vehicles)]
             problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=1)
@@ -81,7 +85,7 @@ def run_test(num_vehicles,
                 saved_problem = deepcopy(problem)
 
                 gd = round(greedy_distance) / 1000
-                results = [n, m, trial, ]
+                results = [n, m, trial, gd]
 
                 for nbh_change in nbh_change_set:
                     problem = deepcopy(saved_problem)
@@ -102,7 +106,7 @@ def run_test(num_vehicles,
 
                 writer.writerow(results)
                 problem.reset()
-        file.flush()
+                file.flush()
         # gdt = round(gdt/trials_per_graph/graph_variations, 3)
         # vdt = round(vdt/trials_per_graph/graph_variations, 3)
         # imt = round(imt/trials_per_graph/graph_variations, 3)
