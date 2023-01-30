@@ -301,10 +301,10 @@ def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=c
     time_hist = []
     operation_hist = []
 
-    distance_hist.append(problem_instance.calculate_distances())
-    time_start = time.time()
-    time_hist.append(0)
-    operation_hist.append(0)
+    # distance_hist.append(problem_instance.calculate_distances())
+    # time_start = time.time()
+    # time_hist.append(0)
+    # operation_hist.append(0)
 
     while nbh_index < len(ordered_nbhs) and time.time() < start_time + timeout:
 
@@ -325,7 +325,7 @@ def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=c
             problem_instance.display_results(False)
         if plot:
             distance_hist.append(problem_instance.calculate_distances())
-            time_hist.append(time.time() - time_start)
+            time_hist.append(time.time())
             operation_hist.append(nbh_index)
 
     return distance_hist, time_hist, operation_hist if plot else None

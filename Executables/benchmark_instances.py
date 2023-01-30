@@ -36,7 +36,7 @@ for instance_name in instances_names:
         'centeredness': 5,
         'number_of_vehicles': vehicle_number,
         'vehicle_capacity': vehicle_capacity,
-        'ordered_nbhs': [ops.inter_two_opt, ops.intra_two_opt, ops.intra_or_opt, ops.multi_remove_and_insert_station],
+        'ordered_nbhs': [ops.inter_two_opt, ops.intra_two_opt, ops.intra_or_opt],
         'ordered_large_nbhs': [1, 3, 5, 8, 10],
         'local_timeout': 2 * 60,  # second
         'large_timeout': 60 * 60,  # second
@@ -90,7 +90,7 @@ for instance_name in instances_names:
                                                                                                               "large_verbose"]
                                                                                                           )
     problem.display_results()
-
+    print('LNS:', time_hist_lns)
     """
     LNS with multiple_remove_insert
     """
@@ -101,13 +101,14 @@ for instance_name in instances_names:
         ordered_large_nbhs,
         ordered_nbhs,
         change_local_nbh=vns.change_nbh_sequential,
-        change_large_nbh=vns.change_nbh_sequential,
+        change_large_nbh=vns.change_nbh_pipe,
         large_nbh_operator=ops.multi_remove_and_insert_station,
         timeout=kwargs["local_timeout"],
         large_timeout=kwargs["large_timeout"],
         local_verbose=kwargs["local_verbose"],
         large_verbose=kwargs["large_verbose"]
     )
+    print('LNS multi:', time_hist_lns_multi)
     print("*** Final result using LNS ***")
     print(f"Time taken {(time.time() - start) / 60} [m]")
     print("Reduction: ", (-problem_copy.calculate_distances() + initial_dist) / initial_dist * 100, "%")
@@ -128,6 +129,7 @@ for instance_name in instances_names:
                                                                                timeout=kwargs["local_timeout"]
                                                                                )
     time_hist = [element - start_time for element in time_hist]
+    print('VNS:', time_hist)
     print("*** Final Result without LNS ***")
     print(f"Time taken: {(time.time() - start_time) / 60} [m]")
     print("Reduction: ", (-problem_copy.calculate_distances() + initial_dist) / initial_dist * 100, "%")
@@ -136,15 +138,15 @@ for instance_name in instances_names:
         for i, vehicle in enumerate(problem_copy.vehicles):
             print(f"Vehicle {i} has distance {round(problem_copy.calculate_distance(vehicle) / 1000, 5)} km")
 
-    plt.plot([x / 60 for x in time_hist], [x / 1000 for x in distance_hist], color='black', label="bare-vns", zorder=-1,
+    plt.plot([x for x in time_hist], [x / 1000 for x in distance_hist], color='black', label="bare-vns", zorder=-1,
              lw=3)
-    plt.plot([x / 60 for x in time_hist_lns], [x / 1000 for x in distance_hist_lns], color='red',
+    plt.plot([x for x in time_hist_lns], [x / 1000 for x in distance_hist_lns], color='red',
              label="lns-vns-destroy")
-    plt.plot([x / 60 for x in time_hist_lns_multi], [x / 1000 for x in distance_hist_lns_multi], color='blue',
+    plt.plot([x for x in time_hist_lns_multi], [x / 1000 for x in distance_hist_lns_multi], color='blue',
              label="lns-vns-multi", lw=1)
 
 
-    plt.xlabel("Time (m)")
+    plt.xlabel("Time (s)")
     plt.ylabel("Distance (km)")
     plt.legend()
 
