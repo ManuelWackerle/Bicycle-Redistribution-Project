@@ -17,8 +17,9 @@ import os
 import numpy as np
 import vns
 from matplotlib import pyplot as plt
+import operators as ops
 
-FOLDER_NAME = 'benchmarks_results'
+FOLDER_NAME = '../benchmarks_results'
 os.makedirs(FOLDER_NAME, exist_ok=True)
 instances_names = get_instances_names()
 
@@ -35,7 +36,7 @@ for instance_name in instances_names:
         'centeredness': 5,
         'number_of_vehicles': vehicle_number,
         'vehicle_capacity': vehicle_capacity,
-        'ordered_nbhs': [vns.inter_two_opt, vns.intra_two_opt, vns.intra_or_opt, vns.multi_remove_and_insert_station],
+        'ordered_nbhs': [ops.inter_two_opt, ops.intra_two_opt, ops.intra_or_opt, ops.multi_remove_and_insert_station],
         'ordered_large_nbhs': [1, 3, 5, 8, 10],
         'local_timeout': 2 * 60,  # second
         'large_timeout': 60 * 60,  # second
@@ -49,7 +50,7 @@ for instance_name in instances_names:
 
     vehicles = []
     for i in range(kwargs["number_of_vehicles"]):
-        vehicles.append(Vehicle(capacity=kwargs["vehicle_capacity"], vehicle_id=str(i)))
+        vehicles.append(Vehicle(distance_limit = 100, capacity=kwargs["vehicle_capacity"], vehicle_id=str(i)))
 
     # Mount problem instance with and without zero demand nodes
     problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)
@@ -74,7 +75,7 @@ for instance_name in instances_names:
                                                                                                           ordered_nbhs,
                                                                                                           change_local_nbh=vns.change_nbh_sequential,
                                                                                                           change_large_nbh=vns.change_nbh_pipe,
-                                                                                                          large_nbh_operator=vns.destroy_rebuild,
+                                                                                                          large_nbh_operator=ops.destroy_rebuild,
                                                                                                           timeout=
                                                                                                           kwargs[
                                                                                                               "local_timeout"],
@@ -101,7 +102,7 @@ for instance_name in instances_names:
         ordered_nbhs,
         change_local_nbh=vns.change_nbh_sequential,
         change_large_nbh=vns.change_nbh_sequential,
-        large_nbh_operator=vns.multi_remove_and_insert_station,
+        large_nbh_operator=ops.multi_remove_and_insert_station,
         timeout=kwargs["local_timeout"],
         large_timeout=kwargs["large_timeout"],
         local_verbose=kwargs["local_verbose"],
