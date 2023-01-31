@@ -91,6 +91,8 @@ def run_test(kwargs):
                         distance = problem.calculate_distances()
                         ld = round(distance) / 1000
                         lt = round(end2 - start1, 3)
+                        results.append(ld)
+                        results.append(lt)
                         im = round((1 - distance / greedy_distance) * 100, 1)
                         print("{:5}: |{:11}km |{:11}km |{:10}s |{:11}km |{:10}s |{:8}% |"
                               .format(m * trials_per_graph + trial, gd, vd, vt, ld, lt, im))
