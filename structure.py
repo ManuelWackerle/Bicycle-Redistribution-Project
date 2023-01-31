@@ -49,6 +49,9 @@ class Vehicle(object):
         self._route = route
         self._modified = True
 
+    def update_distance(self, dist):
+        self._distance = dist
+
     def modified(self):
         modified = self._modified
         self._modified = False
@@ -71,6 +74,9 @@ class Vehicle(object):
 
     def distance_limit(self):
         return self._distance_limit
+
+    def distance(self):
+        return self._distance
 
     def reset(self):
         self._route = []
@@ -104,6 +110,7 @@ class ProblemInstance:
         self.allocated = 0
         self._initialize_tracking_variables(input_graph)
         self.mf_graph = None
+        self.average_distance = 0
 
         # G.
         # self.neighbourhoods = []  # keys of neighbourhoods to be searched.
@@ -145,7 +152,7 @@ class ProblemInstance:
         step = 1 if start_indx < stop_indx else -1 #calculate
         for i in range(start_indx, stop_indx, step):
             u, v = route[i], route[i + step]
-            dist += self.model.edges[u, v]['dist']
+            dist += self.distance(u, v)
         return dist
 
     def distance(self, node1, node2): #Wrapper for distance function
@@ -157,16 +164,28 @@ class ProblemInstance:
             vehicles = self.vehicles
         for v in vehicles:
             total += self.calculate_distance(v)
+        self.average_distance = total/len(vehicles)
         return total
 
     def calculate_distance(self, vehicle):
         dist = 0
         prev = vehicle.route()[0]
         for s in range(1, len(vehicle.route())):
-            dist += self.model.edges[prev, vehicle.route()[s]]['dist']
+            dist += self.distance(prev, vehicle.route()[s])
             prev = vehicle.route()[s]
-        vehicle.set_distance = dist
+        vehicle.update_distance(dist)
         return dist
+
+    def variance_indicator(self, vehicle, tol=0.2):
+        """
+        Make sure to call calculate_distances before calling this method
+        """
+        indicator = 0
+        if vehicle.distance() < (1 - tol) * self.average_distance:
+            indicator = -1
+        elif vehicle.distance() > (1 + tol) * self.average_distance:
+            indicator = 1
+        return indicator
 
     def check_distance_limits(self):
         """check distance limit for all vehicles

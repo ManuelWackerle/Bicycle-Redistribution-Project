@@ -439,9 +439,12 @@ def inter_two_opt_fast(prob: ProblemInstance, max_length_alteration=-1):
     for l1, v1 in enumerate(prob.vehicles):
         route1 = v1.route()
         loads1 = v1.loads()
+        length1 = len(route1)
         for l2 in range(l1 + 1, num_vehicles):
             route2 = prob.vehicles[l2].route()
             loads2 = prob.vehicles[l2].loads()
+            length2 = len(route2)
+            mid = (length2 - length1)//2
 
             # Loop through all edge swap combinations within the max length alteration
             for a in range(1, len(route1) - 3):
@@ -449,7 +452,7 @@ def inter_two_opt_fast(prob: ProblemInstance, max_length_alteration=-1):
                 a_n, y_n = route1[a], route1[y]
                 load_a = loads1[a]
                 best = 0
-                for x in range(max(a - clip, 1), min(a + clip, len(route2) - 1)):
+                for x in range(max(a + mid - clip, 1), min(a + mid + clip, len(route2) - 1)):
                     b = x + 1
                     x_n, b_n = route2[x], route2[b]
                     load_x = loads2[x]
@@ -628,7 +631,15 @@ def inter_segment_swap_fast(prob: ProblemInstance, max_segment_length=10):
                     x2 = a2 + 1
                     load2 = loads2[a2]
 
-                    for y2 in range(a2, min(a2 + max_segment_length, last2 - 1)):
+                    # Use restrictions if lengths of routes differ too much
+                    start, length = a2, max_segment_length
+                    if last2 < 0.8 * last1:    # route2 too short
+                        length = 1
+                    elif last2 > 1.2 * last1:  # route2 too long
+                        start = x2
+                        length = 2 * max_segment_length
+
+                    for y2 in range(start, min(a2 + length, last2 - 1)):
                         b2 = y2 + 1
                         load_change = load2 - loads2[y2]
 

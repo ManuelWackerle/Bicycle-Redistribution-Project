@@ -111,6 +111,55 @@ def greedy_routing_v1(prob, dist_weight=3, tsp_weight=1, randomness=False):
                 v.add_stop(prob.depot, 0)
 
 
+def random_routing(prob):
+    """
+    Finds a set of vehicle routes at random
+    :param prob: Problem instance
+    :modifies vehicle: modifies the vehicle routes and loads
+    """
+    graph = prob.model.copy()
+    if prob.imbalance == 0:
+        prob.show_warning("Error: bicycle imbalance is zero")
+    else:
+        source_sup = graph.nodes[prob.depot]['sup']
+        if source_sup > 0:
+            for v in prob.vehicles:
+                source_sup = graph.nodes[prob.depot]['sup']
+                move = min(source_sup, v.capacity())
+                v.add_stop(prob.depot, move)
+                graph.nodes[prob.depot]['sup'] -= move
+        else:
+            for v in prob.vehicles:
+                v.add_stop(prob.depot, 0)
+
+        prob.allocated = 0
+        unbalanced = set(graph.nodes)
+
+        while prob.allocated < prob.imbalance:
+            for v in prob.vehicles:
+                load = v.current_load()
+                space = v.capacity() - load
+                curr = v.current_stop()
+                stop = random.sample(unbalanced, 1)[0]
+                move = 0
+                sup = graph.nodes[stop]['sup']
+                if sup > 0:
+                    move = min(sup, space)
+                elif sup < 0:
+                    move = -min(-sup, load)
+                if move != 0:
+                    v.add_stop(stop, load + move)
+                    graph.nodes[stop]['sup'] -= move
+                    if sup - move == 0:
+                        unbalanced.remove(stop)
+                if move < 0:
+                    prob.allocated -= move
+
+        for v in prob.vehicles:
+            if v.current_stop() != prob.depot:
+                v.add_stop(prob.depot, 0)
+
+
 def greedy_routing_PILOT(prob):
     """
     Finds a set of vehicle routes with low cost based on a greedy approach.
