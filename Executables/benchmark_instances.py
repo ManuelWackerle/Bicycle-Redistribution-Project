@@ -6,7 +6,7 @@ from load_csv import get_instances_names
 from structure import ProblemInstance, Vehicle
 from copy import deepcopy
 import vns
-from tests.test_with_various_graphs import run_test
+# from tests.test_with_various_graphs import run_test
 import time
 import utils
 from load_csv import load_graph
@@ -36,7 +36,7 @@ for instance_name in instances_names:
         'centeredness': 5,
         'number_of_vehicles': vehicle_number,
         'vehicle_capacity': vehicle_capacity,
-        'ordered_nbhs': [ops.inter_two_opt, ops.intra_two_opt, ops.intra_or_opt],
+        'ordered_nbhs': [ops.inter_two_opt, ops.intra_two_opt, ops.intra_or_opt, ops.destroy_local],
         'ordered_large_nbhs': [1, 3, 5, 8, 10],
         'local_timeout': 2 * 60,  # second
         'large_timeout': 60 * 60,  # second

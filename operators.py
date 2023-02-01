@@ -1355,7 +1355,7 @@ def destroy_rebuild(problem_instance, num_removal=3, verbose=0):
                 print('LN returned a distinct feasible solution with distance '
                       + str(output_problem_copy.calculate_distances()) + '.')
 
-                return inserted_vehicles
+            return inserted_vehicles
         if insert_ratio < 1:
             # the insert ratio for the next rebuild is increased if the previous rebuild wasn't successful
             insert_ratio += 0.05
@@ -1363,7 +1363,7 @@ def destroy_rebuild(problem_instance, num_removal=3, verbose=0):
     # if there is no candidate, return original
     return problem_instance.vehicles
 
-def destroy_local(problem_instance, num_removal=3, num_removal_change_step = 5, verbose=1, timeout=10):
+def destroy_local(problem_instance, num_removal=3, num_removal_change_step=5, num_iter=20, verbose=1, timeout=10000):
     """Destroy operator.
 
     return
@@ -1379,7 +1379,7 @@ def destroy_local(problem_instance, num_removal=3, num_removal_change_step = 5, 
                                                         num_removal=num_removal):
         unbalanced_stations = get_unbalanced_stations(copied_problem_instance, removed_vehicles)
 
-        couter += 1
+        counter += 1
         if counter % num_removal_change_step == 0 and num_removal_current > 1:
             # try to remove less stations next time, so there is a higher change to obtain a feasible solution
             num_removal_current -= 1
@@ -1387,6 +1387,9 @@ def destroy_local(problem_instance, num_removal=3, num_removal_change_step = 5, 
         if not unbalanced_stations:
             # if removal neighbor routes are possibly balanced, return them
             return removed_vehicles
+
+        if counter > num_iter:
+            break
 
         if time.time() - start_time > timeout:
             break
