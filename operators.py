@@ -710,8 +710,8 @@ def _delete_consecutive_same_station(vehicles):
     for k, vehicle in enumerate(vehicles):
         route = vehicle.route()
         N = len(route)
-        if N < 5:
-            print(f"Warning! The vehicle {k} has only {N} stations in the route.")
+        # if N < 5:
+            # print(f"Warning! The vehicle {k} has only {N} stations in the route.")
         remove_idxes = set()
         for i, station in enumerate(route):
             if i < N - 1 and station == route[i + 1]:

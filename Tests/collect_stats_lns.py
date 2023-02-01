@@ -28,7 +28,7 @@ def run_test(kwargs):
                                ops.inter_segment_swap])
 
     timeout = kwargs.get('timeout', 60)
-    large_timeout = kwargs.get('capacity_step', 600)
+    large_timeout = kwargs.get('large_timeout', 600)
 
     now = datetime.datetime.now()
     root = os.path.dirname(os.path.abspath(os.getcwd()))
@@ -62,7 +62,7 @@ def run_test(kwargs):
                     for trial in range(trials_per_graph):
                         vns.greedy_routing_v1(problem, dist_weight=2, randomness=True)
                         greedy_distance = problem.calculate_distances()
-                        saved_problem = deepcopy(problem)
+                        # saved_problem = deepcopy(problem)
 
                         gd = round(greedy_distance) / 1000
                         results = [n, m, v, c, trial, gd]
@@ -78,17 +78,18 @@ def run_test(kwargs):
                         results.append(vd)
                         results.append(vt)
 
+                        start2 = time.time()
                         vns.large_nbh_search(problem, large_nbhs, ordered_nbhs,
                             change_local_nbh=vns.change_nbh_cyclic,
                             change_large_nbh=vns.change_nbh_pipe,
                             large_nbh_operator=ops.destroy_rebuild,
-                            timeout=timeout, large_timeout=large_timeout, local_verbose=0, large_verbose=1
+                            timeout=timeout, large_timeout=large_timeout, local_verbose=0, large_verbose=0
                         )
                         end2 = time.time()
 
                         distance = problem.calculate_distances()
                         ld = round(distance) / 1000
-                        lt = round(end2 - start1, 3)
+                        lt = round(end2 - start2, 3)
                         results.append(ld)
                         results.append(lt)
                         im = round((1 - distance / greedy_distance) * 100, 1)

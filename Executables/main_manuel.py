@@ -17,75 +17,54 @@ kwargs = {
     'capacity':          15,
     'capacity_max':      15,
     'capacity_step':     1,
-    'graph_size':        50,
-    'graph_size_max':    200,
-    'graph_size_step':   50,
+    'graph_size':        100,
+    'graph_size_max':    300,
+    'graph_size_step':   100,
     'graph_variations':  1,
-    'trials_per_graph':  10,
+    'trials_per_graph':  30,
 
     'timeout':           60,
 
     'ordered_nbhs': [ops.intra_two_opt, ops.intra_segment_swap, ops.inter_two_opt, ops.inter_segment_swap],
     'nbh_change_set': [vns.change_nbh_cyclic],
+    # 'ordered_nbhs': [ops.intra_two_opt, ops.intra_segment_swap, ops.inter_two_opt, ops.inter_segment_swap, ops.multi_remove_and_insert_station_v2],
+    # 'nbh_change_set': [vns.change_nbh_cyclic, vns.change_nbh_pipe, vns.change_nbh_sequential, vns.change_nbh_check_all],
 
     'large_nbhs': [0.1, 0.15, 0.20, 0.30],
-    'large_timeout': 200,
+    'large_timeout': 300,
 }
 
 np.random.seed(684)
 random.seed(781)
 
 #=========================================================================================== TEST 1
-# New arguments
-kwargs['num_vehicles'] = 1  # Vary number of vehicles
-kwargs['num_vehicles_max'] = 15
-kwargs['num_vehicles_step'] = 1
 
-print("TEST 1: Collecting Stats for varying vehicle numbers - VNS only")
-start = time.time()
-# collect_stats_vns.run_test(kwargs)  # VNS Only
-stop = time.time()
-print("TEST 1 COMPLETE. (Runtime: {} minutes)\n".format(round((stop - start)/60, 1)))
+# print("TEST 1: Collecting Stats for varying vehicle numbers - VNS only")
+# start = time.time()
+# # collect_stats_vns.run_test(kwargs)  # VNS Only
+# stop = time.time()
+# print("TEST 1 COMPLETE. (Runtime: {} minutes)\n".format(round((stop - start)/60, 1)))
 
 
 #=========================================================================================== TEST 2
-# New arguments
-kwargs['num_vehicles'] =      5 # Fix number of vehicles
-kwargs['num_vehicles_max'] =  5
-kwargs['num_vehicles_step'] = 1
-kwargs['capacity'] =          5 # Vary capacities
-kwargs['capacity_max'] =      60
-kwargs['capacity_step'] =     5
 
-print("TEST 2: Collecting Stats for varying capacities - VNS only")
-start = time.time()
-# collect_stats_vns.run_test(kwargs)  # VNS Only
-stop = time.time()
-print("TEST 2 COMPLETE. (Runtime: {} minutes)\n".format(round((stop - start)/60, 1)))
+# print("TEST 2: Collecting Stats for varying capacities - VNS only")
+# start = time.time()
+# # collect_stats_vns.run_test(kwargs)  # VNS Only
+# stop = time.time()
+# print("TEST 2 COMPLETE. (Runtime: {} minutes)\n".format(round((stop - start)/60, 1)))
 
 
 #=========================================================================================== TEST 3
-# New arguments
-kwargs['capacity'] = 15  # Fix capacities
-kwargs['capacity_max'] = 15
-kwargs['capacity_step'] = 1
-kwargs['nbh_change_set'] = [vns.change_nbh_cyclic, vns.change_nbh_pipe, vns.change_nbh_sequential, vns.change_nbh_check_all]
-kwargs['graph_variations'] =  5
-kwargs['trials_per_graph'] =  5
-kwargs['graph_size_max'] = 300
 
-print("TEST 3: Collecting Stats for different nbh change methods - VNS only")
-start = time.time()
+# print("TEST 3: Collecting Stats for different nbh change methods - VNS only")
+# start = time.time()
 # collect_stats_vns.run_test(kwargs)  # VNS Only
-stop = time.time()
-print("TEST 3 COMPLETE. (Runtime: {} minutes)\n".format(round((stop - start)/60, 1)))
+# stop = time.time()
+# print("TEST 3 COMPLETE. (Runtime: {} minutes)\n".format(round((stop - start)/60, 1)))
 
 
 #=========================================================================================== TEST 4
-kwargs['nbh_change_set'] = [vns.change_nbh_cyclic]
-kwargs['large_nbhs'] = [0.1, 0.15, 0.20, 0.30]
-kwargs['timeout'] =           30
-kwargs['large_timeout'] =     300
 
 print("TEST 4: Collecting Stats for VNS vs LNS")
 start = time.time()
