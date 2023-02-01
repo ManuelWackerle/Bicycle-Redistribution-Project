@@ -42,12 +42,10 @@ def run_test(kwargs):
                 "vns_distance", "vns_time", "lns_distance", "lns_time"]
     writer.writerow(headings)
 
-    count = 0
     for n in range(graph_size, graph_size_max + 1, graph_size_step):
-        print("\nNew graph size has {} nodes and {} vehicles with capacity {}"
-              .format(count, n, num_vehicles, capacity))
+        print("\nProblem Instance of size {} with {} vehicles of capacity {}"
+              .format(n, num_vehicles, capacity))
         print("       | greedy dist  | vns distance |  vns time  | lns distance |  lns time  | improved |")
-        count += 1
         large_nbhs = [int(np.floor(n * element)) for element in destruction_degrees]
 
         for m in range(graph_variations):  # try different graph variations
@@ -84,7 +82,7 @@ def run_test(kwargs):
                             change_local_nbh=vns.change_nbh_cyclic,
                             change_large_nbh=vns.change_nbh_pipe,
                             large_nbh_operator=ops.destroy_rebuild,
-                            timeout=timeout, large_timeout=large_timeout, local_verbose=0, large_verbose=0
+                            timeout=timeout, large_timeout=large_timeout, local_verbose=0, large_verbose=1
                         )
                         end2 = time.time()
 

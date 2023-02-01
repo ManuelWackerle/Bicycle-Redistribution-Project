@@ -58,12 +58,10 @@ def run_test(kwargs):
             raise ValueError
     writer.writerow(headings)
 
-    count = 0
     for n in range(graph_size, graph_size_max + 1, graph_size_step):
-        print("\nNew graph size has {} nodes and {} vehicles with capacity {}"
-              .format(count, n, num_vehicles, capacity))
+        print("\nProblem Instance of size {} with {} vehicles of capacity {}"
+              .format(n, num_vehicles, capacity))
         print("       | veh | cap | greedy dist  | vns distance |  vns time  | improved |  change_nbh_method")
-        count += 1
 
         for m in range(graph_variations): #try different graph variations
             #Load Problem Instance

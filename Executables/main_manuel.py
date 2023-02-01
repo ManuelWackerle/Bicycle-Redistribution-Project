@@ -5,8 +5,6 @@ This file is temporary and should be deleted when the project is complete
 
 import random
 import time
-from structure import ProblemInstance, Vehicle
-from load_csv import load_subset_from_ordered_nodes, load_graph
 import numpy as np
 from Tests import collect_stats_lns, collect_stats_vns
 import operators as ops
@@ -39,20 +37,20 @@ random.seed(781)
 
 #=========================================================================================== TEST 1
 # New arguments
-kwargs['num_vehicles'] = 1
+kwargs['num_vehicles'] = 1  # Vary number of vehicles
 kwargs['num_vehicles_max'] = 15
 kwargs['num_vehicles_step'] = 1
 
 print("TEST 1: Collecting Stats for varying vehicle numbers - VNS only")
 start = time.time()
-collect_stats_vns.run_test(kwargs)  # VNS Only
+# collect_stats_vns.run_test(kwargs)  # VNS Only
 stop = time.time()
 print("TEST 1 COMPLETE. (Runtime: {} minutes)\n".format(round((stop - start)/60, 1)))
 
 
 #=========================================================================================== TEST 2
 # New arguments
-kwargs['num_vehicles'] =      5 # Fixed number of Vehicles
+kwargs['num_vehicles'] =      5 # Fix number of vehicles
 kwargs['num_vehicles_max'] =  5
 kwargs['num_vehicles_step'] = 1
 kwargs['capacity'] =          5 # Vary capacities
@@ -61,7 +59,7 @@ kwargs['capacity_step'] =     5
 
 print("TEST 2: Collecting Stats for varying capacities - VNS only")
 start = time.time()
-collect_stats_vns.run_test(kwargs)  # VNS Only
+# collect_stats_vns.run_test(kwargs)  # VNS Only
 stop = time.time()
 print("TEST 2 COMPLETE. (Runtime: {} minutes)\n".format(round((stop - start)/60, 1)))
 
@@ -78,7 +76,7 @@ kwargs['graph_size_max'] = 300
 
 print("TEST 3: Collecting Stats for different nbh change methods - VNS only")
 start = time.time()
-collect_stats_vns.run_test(kwargs)  # VNS Only
+# collect_stats_vns.run_test(kwargs)  # VNS Only
 stop = time.time()
 print("TEST 3 COMPLETE. (Runtime: {} minutes)\n".format(round((stop - start)/60, 1)))
 
