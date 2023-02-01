@@ -24,8 +24,8 @@ def run_test(kwargs):
 
     destruction_degrees = kwargs.get('large_nbhs', [])
     ordered_nbhs = kwargs.get('ordered_nbhs',
-                              [ops.intra_two_opt_fast, ops.intra_segment_swap_fast, ops.inter_two_opt_fast,
-                               ops.inter_segment_swap_fast])
+                              [ops.intra_two_opt, ops.intra_segment_swap, ops.inter_two_opt,
+                               ops.inter_segment_swap])
 
     timeout = kwargs.get('timeout', 60)
     large_timeout = kwargs.get('capacity_step', 600)

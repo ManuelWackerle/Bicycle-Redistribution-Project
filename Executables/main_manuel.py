@@ -25,7 +25,7 @@ kwargs = {
 
     'timeout':           60,
 
-    'ordered_nbhs': [ops.intra_two_opt_fast, ops.intra_segment_swap_fast, ops.inter_two_opt_fast, ops.inter_segment_swap_fast],
+    'ordered_nbhs': [ops.intra_two_opt, ops.intra_segment_swap, ops.inter_two_opt, ops.inter_segment_swap],
     'nbh_change_set': [vns.change_nbh_cyclic],
 
     'large_nbhs': [0.1, 0.15, 0.20, 0.30],

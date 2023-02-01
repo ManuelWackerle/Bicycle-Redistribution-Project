@@ -8,7 +8,7 @@ from copy import deepcopy
 from structure import ProblemInstance
 
 
-def intra_two_opt(prob, tolerance=0):
+def intra_two_opt_old(prob, tolerance=0):
     swaps = []
     for l in range(len(prob.vehicles)):
         v = prob.vehicles[l]
@@ -55,7 +55,7 @@ def intra_two_opt(prob, tolerance=0):
     return out
 
 
-def intra_or_opt(prob, tolerance=0):
+def intra_or_opt_old(prob, tolerance=0):
     swaps = []
     for l, v in enumerate(prob.vehicles):
         swaps.append([])
@@ -99,7 +99,7 @@ def intra_or_opt(prob, tolerance=0):
     return out
 
 
-def inter_segment_swap(prob, max_segment_length=10):
+def inter_segment_swap_old(prob, max_segment_length=10):
     swaps = []
     prob.calculate_loading_MF()
 
@@ -189,7 +189,7 @@ def non_overlapping_old(slices, new_slice):
     return True
 
 
-def inter_two_opt(prob, tolerance=0):
+def inter_two_opt_old(prob, tolerance=0):
     swaps = []
     clip = 5
     for l1, v1 in enumerate(prob.vehicles):
@@ -239,7 +239,7 @@ def inter_two_opt(prob, tolerance=0):
     return out
 
 
-def intra_two_opt_v2(prob: ProblemInstance, tolerance=0):
+def intra_two_opt_old_v2(prob: ProblemInstance, tolerance=0):
     """
     Searches for intra two-opt switches that provide a decrease in route length
     param prob: Problem instance
@@ -288,7 +288,7 @@ def intra_two_opt_v2(prob: ProblemInstance, tolerance=0):
     return out
 
 
-def inter_two_opt_v2(prob: ProblemInstance, tolerance=0):
+def inter_two_opt_old_v2(prob: ProblemInstance, tolerance=0):
     swaps = []
     clip = 5
     for l1, v1 in enumerate(prob.vehicles):
@@ -351,7 +351,7 @@ def _relative_segment_length(prob: ProblemInstance) -> int:
     return len(prob.model.nodes) // len(prob.vehicles) // 5
 
 
-def intra_two_opt_fast(prob: ProblemInstance):
+def intra_two_opt(prob: ProblemInstance):
     """
     Compares edges within the same route and Tests if swapping them reduces the total distance.
     Candidates are collected an executed on a deepcopy of the problem instance in a best improvement first fashion.
@@ -421,7 +421,7 @@ def intra_two_opt_fast(prob: ProblemInstance):
     return vehicles
 
 
-def inter_two_opt_fast(prob: ProblemInstance, max_length_alteration=-1):
+def inter_two_opt(prob: ProblemInstance, max_length_alteration=-1):
     """
     Compares edges between different routes and Tests if swapping them reduces the total distance.
     Candidates are collected an executed on a deepcopy of the problem instance in a best improvement first fashion.
@@ -513,7 +513,7 @@ def _segment_swap_difference(prob: ProblemInstance, indices):
     return dist_old - dist_new
 
 
-def intra_segment_swap_fast(prob: ProblemInstance, max_segment_length=-1):
+def intra_segment_swap(prob: ProblemInstance, max_segment_length=-1):
     """
     Compares segments within the same route and tests if swapping them reduces the total distance.
     Original Route:        [...   a1 x1  * * *  y1 b1    ...    a2 x2  # # #  y2 b2  ...]
@@ -590,7 +590,7 @@ def intra_segment_swap_fast(prob: ProblemInstance, max_segment_length=-1):
     return vehicles
 
 
-def inter_segment_swap_fast(prob: ProblemInstance, max_segment_length=10):
+def inter_segment_swap(prob: ProblemInstance, max_segment_length=10):
     """
     Compares segments within the same route and tests if swapping them reduces the total distance.
     Original Routes:       [...   a1 x1  * * *  y1 b1   ...]  [...   a2 x2  # # #  y2 b2  ...]
