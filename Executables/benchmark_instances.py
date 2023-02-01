@@ -6,7 +6,7 @@ from load_csv import get_instances_names
 from structure import ProblemInstance, Vehicle
 from copy import deepcopy
 import vns
-from tests.test_with_various_graphs import run_test
+# from tests.test_with_various_graphs import run_test
 import time
 import utils
 from load_csv import load_graph

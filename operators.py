@@ -1315,7 +1315,7 @@ def remove_and_insert_station(problem_instance):
     return problem_instance.vehicles
 
 
-def destroy_rebuild(problem_instance, num_removal=3, verbose=0):
+def destroy_rebuild(problem_instance, num_removal=3, verbose=1):
     """Destroy and rebuild the set of routes.
 
     return
@@ -1355,7 +1355,7 @@ def destroy_rebuild(problem_instance, num_removal=3, verbose=0):
                 print('LN returned a distinct feasible solution with distance '
                       + str(output_problem_copy.calculate_distances()) + '.')
 
-                return inserted_vehicles
+            return inserted_vehicles
         if insert_ratio < 1:
             # the insert ratio for the next rebuild is increased if the previous rebuild wasn't successful
             insert_ratio += 0.05
