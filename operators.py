@@ -1315,7 +1315,7 @@ def remove_and_insert_station(problem_instance):
     return problem_instance.vehicles
 
 
-def destroy_rebuild(problem_instance, num_removal=3, verbose=1):
+def destroy_rebuild(problem_instance, num_removal=3, verbose=0):
     """Destroy and rebuild the set of routes.
 
     return
