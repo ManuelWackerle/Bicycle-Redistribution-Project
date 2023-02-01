@@ -149,6 +149,7 @@ def load_subset_from_ordered_nodes(nodes, centeredness=5, directed=True, randomn
 
     bin_id, _, _, lat_str, long_str = depot_node
     graph.add_node(str(0), sup=0)  # add depot node with zero load
+    graph.add_edge(str(0), str(0), dist=0)  # add self edge
     node_data[str(0)] = {'bin_id': bin_id, 'pos': (float(long_str), float(lat_str))}
 
     for i in random_indexes:
