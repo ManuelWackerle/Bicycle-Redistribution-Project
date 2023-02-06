@@ -1,5 +1,5 @@
-# import sys
-# sys.path.append("/Users/hajime/workspace/tum/CaseStudies/Bicycle-Redistribution-Project/")
+import sys
+sys.path.append("/Users/hajime/workspace/tum/CaseStudies/Bicycle-Redistribution-Project/")
 
 import os
 import time
@@ -11,6 +11,7 @@ import vns
 import operators as ops
 from structure import ProblemInstance, Vehicle
 from matplotlib import pyplot as plt
+from matplotlib import colors as mcolors
 import numpy as np
 from statistics import stdev
 
@@ -19,10 +20,26 @@ kwargs = {
     'centeredness': 5,
     'number_of_vehicles': 5,
     'vehicle_capacity': 20,
-    'ordered_nbhs': [ops.inter_two_opt, ops.intra_two_opt, ops.intra_or_opt, ops.multi_remove_and_insert_station],
+    'ordered_nbhs': [ops.intra_two_opt,
+                     ops.intra_segment_swap,
+                     ops.inter_two_opt,
+                     ops.inter_segment_swap,
+                     ops.multi_remove_and_insert_station,
+                     ops.multi_remove_and_insert_station_v2,
+                     ops.destroy_local],
+    'nbhs_names': ['intra_two_opt',
+                   'intra_seg_swap',
+                   'inter_two_opt',
+                   'inter_seg_swap',
+                   'rem_ins_1',
+                   'rem_ins_5',
+                   'destroy_local'],
     'distance_limit': 200000,  # meter
     'num_try': 500,
-    'patience': 1,
+    'patience': 5,
+    'from_csv': True,
+    'time_file_name': "nbhs_time_stats_p5.csv",
+    'dist_file_name': "nbhs_dist_stats_p5.csv",
 }
 
 PATH = os.path.join(os.getcwd(), 'results')
@@ -97,27 +114,33 @@ def read_results_from_csv(file_name):
             hist.append([float(x) for x in row])
     return hist
 
-def show_stats(operations, hist, title, ylabel):
-    np_hist = np.array(hist)
-    operation_names = np.array([x.__name__ for x in operations])
+def show_stats(operation_names, hist, title, ylabel):
+    colors = ['#F5A623', '#9013FE', '#7ED321', '#4A90E2', '#F8E71C', '#D0021B', 'r']
+    np_hist = np.array(hist)[:,:-2]
+    operation_names = np.array(operation_names)[:-2]
     np_mean = np.mean(np_hist, axis=0)
     np_std = np.std(np_hist, axis=0)
     plt.title(title)
     plt.ylabel(ylabel)
-    plt.errorbar(operation_names, np_mean, np_std, linestyle='None', marker='^')
+    # plt.errorbar(operation_names, np_mean, np_std, linestyle='None', marker='^')
+    plt.bar(operation_names, np_mean, alpha=0.8, color=colors[:len(operation_names)], yerr=np_std)
     plt.show()
 
 
 def main():
-    from_csv = False
-
-    if from_csv:
-        time_hist = read_results_from_csv('nbhs_time_stats.csv')
-        dist_hist = read_results_from_csv('nbhs_dist_stats.csv')
+    if kwargs['from_csv']:
+        time_hist = read_results_from_csv('nbhs_time_stats_p5.csv')
+        dist_hist = read_results_from_csv('nbhs_dist_stats_p5.csv')
     else:
-        time_hist, dist_hist = write_results_to_csv(kwargs['ordered_nbhs'], num_try=kwargs['num_try'], patience=kwargs['patience'])
-    show_stats(kwargs['ordered_nbhs'], dist_hist, 'Distance improvement', 'Distance [km]')
-    show_stats(kwargs['ordered_nbhs'], time_hist, 'Time Taken', 'Time [s]')
+        time_hist, dist_hist = write_results_to_csv(
+            kwargs['ordered_nbhs'],
+            num_try=kwargs['num_try'],
+            patience=kwargs['patience'],
+            time_file_name=kwargs['time_file_name'],
+            dist_file_name=kwargs['dist_file_name'],
+        )
+    show_stats(kwargs['nbhs_names'], dist_hist, 'Distance improvement', 'Distance [km]')
+    show_stats(kwargs['nbhs_names'], time_hist, 'Time Taken', 'Time [s]')
 
 if __name__ == '__main__':
     main()
