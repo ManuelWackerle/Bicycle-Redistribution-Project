@@ -147,7 +147,6 @@ def visualize_routes_go(routes, node_data):
     #             buttons=routes_buttons)
     #     ]
     # )
-
     fig.show()
 
 

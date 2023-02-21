@@ -79,6 +79,7 @@ def greedy_routing_v1(prob, dist_weight=3, tsp_weight=1, randomness=False):
                     if n != curr:
                         dist = graph.edges[curr, n]['dist']
                         sup = graph.nodes[n]['sup']
+                        dist = 1 if dist == 0 else dist
                         if sup > 0:
                             move = min(sup, space)
                             score = move * (mean / dist) ** dist_weight
@@ -278,7 +279,7 @@ def change_nbh_cyclic(problem, modified_vehicles, nbh, nbh_last_success, ordered
     search is continued in the next neighbourhood in the list.
     """
     if problem.calculate_distances() > problem.calculate_distances(modified_vehicles):
-        print("Changing from neighbourhood ", nbh, "to neighbourhood ", nbh + 1) if verbose == 1 else None
+        # print("Changing from neighbourhood ", nbh, "to neighbourhood ", nbh + 1) if verbose == 1 else None
         problem.vehicles = modified_vehicles
         nbh_last_success[0] = nbh
 
@@ -355,10 +356,10 @@ def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=c
     time_hist = []
     operation_hist = []
 
-    # distance_hist.append(problem_instance.calculate_distances())
-    # time_start = time.time()
-    # time_hist.append(0)
-    # operation_hist.append(0)
+    distance_hist.append(problem_instance.calculate_distances())
+    time_start = time.time()
+    time_hist.append(0)
+    operation_hist.append(0)
 
     while nbh_index < len(ordered_nbhs) and time.time() < start_time + timeout:
 
@@ -379,7 +380,7 @@ def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=c
             problem_instance.display_results(False)
         if plot:
             distance_hist.append(problem_instance.calculate_distances())
-            time_hist.append(time.time())
+            time_hist.append(time.time() - time_start)
             operation_hist.append(nbh_index)
 
     return distance_hist, time_hist, operation_hist if plot else None

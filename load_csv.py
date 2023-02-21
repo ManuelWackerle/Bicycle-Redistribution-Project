@@ -45,6 +45,7 @@ def load_graph(graph_name, path=None, location='muc', use_adjacency_matrix=True,
     data_drop = False
     node_data = {}
     count, row_count, total_supply = 0, 0, 0
+    depot = 0
 
     next(data)
     for row in data:
@@ -52,12 +53,15 @@ def load_graph(graph_name, path=None, location='muc', use_adjacency_matrix=True,
         if 0 < truncate_after < row_count:
             break
         _, bin_id, supply_str, lat_str, long_str = row
+        if bin_id == 'depot':
+            depot = str(count)
         supply, x, y = int(round(float(supply_str))), float(long_str), float(lat_str)
 
         if munich_long[0] < x < munich_long[1] and munich_lat[0] < y < munich_lat[1] \
             and not use_adjacency_matrix or bin_id in adjacency_dict:
             total_supply += supply
             graph.add_node(str(count), sup=supply)
+            graph.add_edge(str(count), str(count), dist=0)
             node_data[str(count)] = {'bin_id': bin_id, 'pos': (x, y)}
             for node, attr in node_data.items():
                 if use_adjacency_matrix:
@@ -75,7 +79,7 @@ def load_graph(graph_name, path=None, location='muc', use_adjacency_matrix=True,
     if data_drop:
         print(bcolors.WARNING + "Warning: some data points ignored because position is too far out of Munich" + bcolors.ENDC)
 
-    return graph, node_data
+    return graph, node_data, depot
 
 
 def load_subset_from_ordered_nodes(nodes, centeredness=5, directed=True, randomness=True):

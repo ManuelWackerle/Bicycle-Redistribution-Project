@@ -11,7 +11,7 @@ class Vehicle(object):
     """
     Vehicle: contains vehicle identification, capacity and vehicle route .
     """
-    def __init__(self, capacity: int, vehicle_id: str, distance_limit: int):
+    def __init__(self, capacity: int, vehicle_id: str, distance_limit=100):
         """
         Initializes the vehicle
         :param capacity: Maximum number of bikes that the vehicle can carry at any time
@@ -94,14 +94,14 @@ class ProblemInstance:
         allocated: number of bikes that the current routes allocate.
         verbose: for debugging purposes. 0: execute silently, 1: display warnings only, 2: display in-between steps
     """
-    def __init__(self, input_graph: nx.Graph, vehicles: [], node_data=None, verbose=0):
+    def __init__(self, input_graph: nx.Graph, vehicles: [], node_data=None, depot='0', verbose=0):
         self._verbose = verbose
 
         # problem instance variables
         self.model = input_graph
         self.node_data = node_data
         self.vehicles = vehicles
-        self.depot = '0'
+        self.depot = depot
 
         # tracking variables
         self.total_source = 0
