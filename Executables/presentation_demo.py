@@ -10,7 +10,7 @@ import load_csv
 import utils
 from Tests import collect_stats_lns, collect_stats_vns
 import operators as ops
-import vns
+import solvers
 from copy import deepcopy
 from structure import Vehicle, ProblemInstance
 
@@ -47,7 +47,7 @@ input("Press Enter to continue...")
 #=========================================================================================== RANDOM ROUTES
 
 print("RANDOM ROUTES")
-vns.random_routing(problem)
+solvers.random_routing(problem)
 problem.calculate_loading_MF()
 utils.visualize_routes_go(problem.get_all_routes(), node_info)
 problem.display_results()
@@ -58,7 +58,7 @@ problem.reset()
 #=========================================================================================== GREEDY ROUTES
 
 print("GREEDY ROUTES")
-vns.greedy_routing_v1(problem, randomness=False)
+solvers.greedy_routing_v1(problem, randomness=False)
 problem.calculate_loading_MF()
 utils.visualize_routes_go(problem.get_all_routes(), node_info)
 problem.display_results()
@@ -74,7 +74,7 @@ print("RUNNING VNS")
 random.seed(888)
 np.random.seed(369)
 start1 = time.time()
-distance_hist, time_hist, operation_hist = vns.general_variable_nbh_search(
+distance_hist, time_hist, operation_hist = solvers.general_variable_nbh_search(
     problem, kwargs['ordered_nbhs'], change_nbh=vns.change_nbh_cyclic, timeout=kwargs['timeout'], verbose=1)
 end1 = time.time()
 
@@ -90,7 +90,7 @@ input("Press Enter to continue...")
 
 print("RUNNING LNS")
 start1 = time.time()
-vns.large_nbh_search(
+solvers.large_nbh_search(
     problem, ordered_local_nbhs=kwargs['ordered_nbhs'], ordered_large_nbhs=kwargs['large_nbhs'], timeout=kwargs['timeout'], local_verbose=0, large_verbose=1)
 end1 = time.time()
 

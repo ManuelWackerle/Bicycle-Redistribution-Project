@@ -9,7 +9,7 @@ from load_csv import load_subset_from_ordered_nodes
 from load_csv import load_from_pickle
 from structure import ProblemInstance, Vehicle
 from copy import deepcopy
-import vns
+import solvers
 import operators as ops
 from Tests.test_with_various_graphs import run_test
 
@@ -21,7 +21,7 @@ from load_csv import load_subset_from_ordered_nodes
 from copy import deepcopy
 import os
 import numpy as np
-import vns
+import solvers
 from matplotlib import pyplot as plt
 
 kwargs = {
@@ -29,7 +29,7 @@ kwargs = {
     'centeredness': 5,
     'number_of_vehicles': 41,
     'vehicle_capacity': 20,
-    'ordered_nbhs': [ops.inter_two_opt, ops.intra_two_opt, ops.intra_or_opt, vns.multi_remove_and_insert_station],
+    'ordered_nbhs': [ops.inter_two_opt, ops.intra_two_opt, ops.intra_or_opt, solvers.multi_remove_and_insert_station],
     'ordered_large_nbhs': [1, 3, 5, 8, 10],
     'local_timeout': 2*60,  # second
     'large_timeout': 60*60,  # second
@@ -58,7 +58,7 @@ for i in range(kwargs["number_of_vehicles"]):
 # Mount problem instance with and without zero demand nodes
 problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)
 
-vns.greedy_routing_v1(problem)
+solvers.greedy_routing_v1(problem)
 initial_dist = problem.calculate_distances()
 
 # Define local neighbours
@@ -72,17 +72,17 @@ LNS with destroy_rebuild
 """
 start = time.time()
 problem_copy = deepcopy(problem)
-distance_hist_lns, time_hist_lns, operation_hist_lns, time_shake, shake_effect = vns.large_nbh_search(problem_copy,
-                                                                                                      ordered_large_nbhs,
-                                                                                                      ordered_nbhs,
-                                                                                                      change_local_nbh=vns.change_nbh_sequential,
-                                                                                                      change_large_nbh=vns.change_nbh_pipe,
-                                                                                                      large_nbh_operator=vns.destroy_rebuild,
-                                                                                                      timeout=kwargs["local_timeout"],
-                                                                                                      large_timeout=kwargs["large_timeout"],
-                                                                                                      local_verbose=kwargs["local_verbose"],
-                                                                                                      large_verbose=kwargs["large_verbose"]
-                                                                                                      )
+distance_hist_lns, time_hist_lns, operation_hist_lns, time_shake, shake_effect = solvers.large_nbh_search(problem_copy,
+                                                                                                          ordered_large_nbhs,
+                                                                                                          ordered_nbhs,
+                                                                                                          change_local_nbh=solvers.change_nbh_sequential,
+                                                                                                          change_large_nbh=solvers.change_nbh_pipe,
+                                                                                                          large_nbh_operator=solvers.destroy_rebuild,
+                                                                                                          timeout=kwargs["local_timeout"],
+                                                                                                          large_timeout=kwargs["large_timeout"],
+                                                                                                          local_verbose=kwargs["local_verbose"],
+                                                                                                          large_verbose=kwargs["large_verbose"]
+                                                                                                          )
 problem.display_results()
 
 
@@ -92,17 +92,17 @@ LNS with multiple_remove_insert
 """
 start = time.time()
 problem_copy = deepcopy(problem)
-distance_hist_lns_multi, time_hist_lns_multi, operation_hist_lns_multi, time_shake_multi, shake_effect_multi = vns.large_nbh_search(problem_copy,
-                                                                                                      ordered_large_nbhs,
-                                                                                                      ordered_nbhs,
-                                                                                                      change_local_nbh=vns.change_nbh_sequential,
-                                                                                                      change_large_nbh=vns.change_nbh_sequential,
-                                                                                                      large_nbh_operator=vns.multi_remove_and_insert_station,
-                                                                                                      timeout=kwargs["local_timeout"],
-                                                                                                      large_timeout=kwargs["large_timeout"],
-                                                                                                      local_verbose=kwargs["local_verbose"],
-                                                                                                      large_verbose=kwargs["large_verbose"]
-                                                                                                      )
+distance_hist_lns_multi, time_hist_lns_multi, operation_hist_lns_multi, time_shake_multi, shake_effect_multi = solvers.large_nbh_search(problem_copy,
+                                                                                                                                        ordered_large_nbhs,
+                                                                                                                                        ordered_nbhs,
+                                                                                                                                        change_local_nbh=solvers.change_nbh_sequential,
+                                                                                                                                        change_large_nbh=solvers.change_nbh_sequential,
+                                                                                                                                        large_nbh_operator=solvers.multi_remove_and_insert_station,
+                                                                                                                                        timeout=kwargs["local_timeout"],
+                                                                                                                                        large_timeout=kwargs["large_timeout"],
+                                                                                                                                        local_verbose=kwargs["local_verbose"],
+                                                                                                                                        large_verbose=kwargs["large_verbose"]
+                                                                                                                                        )
 print("*** Final result using LNS ***")
 print(f"Time taken {(time.time() - start)/60} [m]")
 print("Reduction: ", (-problem_copy.calculate_distances() + initial_dist) / initial_dist * 100, "%")
@@ -116,11 +116,11 @@ VNS
 """
 start_time = time.time()
 problem_copy = deepcopy(problem)
-distance_hist, time_hist, operation_hist = vns.general_variable_nbh_search(problem_copy,
-                                                                           ordered_nbhs,
-                                                                           change_nbh=vns.change_nbh_sequential,
-                                                                           verbose=kwargs["local_verbose"], timeout=kwargs["local_timeout"]
-                                                                           )
+distance_hist, time_hist, operation_hist = solvers.general_variable_nbh_search(problem_copy,
+                                                                               ordered_nbhs,
+                                                                               change_nbh=solvers.change_nbh_sequential,
+                                                                               verbose=kwargs["local_verbose"], timeout=kwargs["local_timeout"]
+                                                                               )
 time_hist = [element - start_time for element in time_hist]
 print("*** Final Result without LNS ***")
 print(f"Time taken: {(time.time() - start_time)/60} [m]")

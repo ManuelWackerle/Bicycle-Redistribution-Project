@@ -6,7 +6,7 @@ from load_csv import load_subset_from_ordered_nodes
 from copy import deepcopy
 import os
 import numpy as np
-import vns
+import solvers
 import matplotlib.pyplot as plt
 import operators as op
 """
@@ -27,7 +27,7 @@ for i in range(5):
 problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)
 
 # Solve the problem
-vns.greedy_routing_v1(problem)
+solvers.greedy_routing_v1(problem)
 problem_copy = deepcopy(problem)
 initial_dist = problem.calculate_distances()
 
@@ -38,14 +38,14 @@ ordered_large_nbhs = [int(np.floor(instance_size * element)) for element in dest
 
 print("*** Showing improvement with LNS***")
 start = time.time()
-distance_hist_lns, time_hist_lns, operation_hist_lns, time_shake, shake_effect = vns.large_nbh_search(problem,
-                     ordered_large_nbhs,
-                     ordered_nbhs,
-                     change_local_nbh=vns.change_nbh_sequential,
-                     change_large_nbh=vns.change_nbh_pipe,
-                     timeout=100,
-                     large_verbose=0
-                     )
+distance_hist_lns, time_hist_lns, operation_hist_lns, time_shake, shake_effect = solvers.large_nbh_search(problem,
+                                                                                                          ordered_large_nbhs,
+                                                                                                          ordered_nbhs,
+                                                                                                          change_local_nbh=solvers.change_nbh_sequential,
+                                                                                                          change_large_nbh=vns.change_nbh_pipe,
+                                                                                                          timeout=100,
+                                                                                                          large_verbose=0
+                                                                                                          )
 print("*** Final result using LNS ***")
 print("Time taken", time.time()-start)
 print("Reduction: ", (-problem.calculate_distances() + initial_dist) / initial_dist * 100, "%")
@@ -53,11 +53,11 @@ problem.display_results()
 
 print("*** Showing improvement with VNS ***")
 start = time.time()
-distance_hist, time_hist, operation_hist = vns.general_variable_nbh_search(problem_copy,
-                                ordered_nbhs,
-                                change_nbh=vns.change_nbh_sequential,
-                                verbose=0
-                                )
+distance_hist, time_hist, operation_hist = solvers.general_variable_nbh_search(problem_copy,
+                                                                               ordered_nbhs,
+                                                                               change_nbh=solvers.change_nbh_sequential,
+                                                                               verbose=0
+                                                                               )
 
 print("*** Final Result without LNS ***")
 print("Time taken: ", time.time()-start)

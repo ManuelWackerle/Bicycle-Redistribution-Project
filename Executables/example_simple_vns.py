@@ -5,7 +5,7 @@ import time
 from structure import ProblemInstance, Vehicle
 from load_csv import load_subset_from_ordered_nodes
 import utils
-import vns
+import solvers
 import operators as ops
 
 
@@ -15,7 +15,7 @@ kwargs = {
     'vehicle_capacity':     15,
     'vns_timeout':          60, #seconds
     'show_routes':          False,
-    'ordered_nbhs': [ops.inter_segment_swap, ops.intra_or_opt, ops.inter_two_opt, ops.intra_two_opt, vns.multi_remove_and_insert_station],
+    'ordered_nbhs': [ops.inter_segment_swap, ops.intra_or_opt, ops.inter_two_opt, ops.intra_two_opt, solvers.multi_remove_and_insert_station],
 }
 
 
@@ -32,7 +32,7 @@ problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_i
 ### Create and initial set of solutions using the greedy algorithm and calculate the loading instrunctions
 
 
-vns.greedy_routing_v1(problem, randomness=False)
+solvers.greedy_routing_v1(problem, randomness=False)
 problem.calculate_loading_MF()
 print("\nInitial Solution using greedy alogrithm:")
 problem.display_results(kwargs['show_routes'])
@@ -44,8 +44,8 @@ problem.display_results(kwargs['show_routes'])
 
 start_time = time.time()
 
-distance_hist, time_hist, operation_hist = vns.general_variable_nbh_search(
-    problem, kwargs['ordered_nbhs'], change_nbh=vns.change_nbh_pipe, timeout=kwargs['vns_timeout'], verbose=0)
+distance_hist, time_hist, operation_hist = solvers.general_variable_nbh_search(
+    problem, kwargs['ordered_nbhs'], change_nbh=solvers.change_nbh_pipe, timeout=kwargs['vns_timeout'], verbose=0)
 problem.calculate_loading_MF()
 
 end_time = time.time()

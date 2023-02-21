@@ -10,7 +10,7 @@ from functools import partial
 from load_csv import load_graph, load_subset_from_ordered_nodes, load_from_pickle
 
 from copy import deepcopy
-import vns
+import solvers
 import operators as ops
 from structure import ProblemInstance, Vehicle
 from matplotlib import pyplot as plt
@@ -48,7 +48,7 @@ def _get_problem_instance():
     return problem
 
 def run_vns(problem):
-    vns.general_variable_nbh_search(
+    solvers.general_variable_nbh_search(
         problem, kwargs['ordered_nbhs'], change_nbh=vns.change_nbh_sequential,
         verbose=kwargs["local_verbose"], timeout=kwargs["local_timeout"])
     return problem

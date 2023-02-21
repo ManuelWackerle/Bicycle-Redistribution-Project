@@ -7,7 +7,7 @@ import csv
 from load_csv import load_graph, load_subset_from_ordered_nodes, load_from_pickle
 
 from copy import deepcopy
-import vns
+import solvers
 import operators as ops
 from structure import ProblemInstance, Vehicle
 from matplotlib import pyplot as plt

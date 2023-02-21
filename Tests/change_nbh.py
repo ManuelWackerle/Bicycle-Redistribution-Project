@@ -17,7 +17,7 @@ from structure import (
     Vehicle,
     ProblemInstance
 )
-from vns import (
+from solvers import (
     change_nbh_skewed_sequential,
     change_nbh_cyclic,
     change_nbh_pipe,

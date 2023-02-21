@@ -11,7 +11,7 @@ import load_csv
 import utils
 from Tests import collect_stats_lns, collect_stats_vns
 import operators as ops
-import vns
+import solvers
 from structure import Vehicle, ProblemInstance
 
 kwargs = {
@@ -30,7 +30,7 @@ kwargs = {
     'timeout':           60,
 
     'ordered_nbhs': [ops.inter_segment_swap, ops.intra_two_opt, ops.intra_segment_swap, ops.inter_two_opt, ],
-    'nbh_change_set': [vns.change_nbh_cyclic],
+    'nbh_change_set': [solvers.change_nbh_cyclic],
     # 'ordered_nbhs': [ops.intra_two_opt, ops.intra_segment_swap, ops.inter_two_opt, ops.inter_segment_swap, ops.multi_remove_and_insert_station_v2],
     # 'nbh_change_set': [vns.change_nbh_cyclic, vns.change_nbh_pipe, vns.change_nbh_sequential, vns.change_nbh_check_all],
 

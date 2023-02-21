@@ -47,6 +47,7 @@ def display_graph(Graph, node_pos=None, edge_list=None, title=None):
     plt.draw()
     plt.show()
 
+
 def visualize_routes(routes, node_data):
     station_color = 'grey'
     random.seed(0)
@@ -164,54 +165,6 @@ def edge_data_as_numpy(graph: nx.Graph, data_str):
     return np.array(edges)
 
 
-def dict_data_as_numpy(dict: dict, data_str):
-    arr = []
-    for e, data in dict.items():
-        arr.append(data[data_str])
-    return np.array(arr)
-
-
-def reformat_pos(graph: nx.Graph):
-    x_list = nodes_data_as_numpy(graph, "")
-
-
-def metric_completion(graph):
-    G_metric = nx.DiGraph()
-    G_metric.add_nodes_from(graph.nodes.items())
-    for n in graph.nodes:
-        for m in graph.nodes:
-            if n != m:
-                dist = nx.shortest_path_length(graph, n, m, weight='weight')
-                print(dist)
-                G_metric.add_edge(n, m, weight=dist)
-    return G_metric
-
-
-def compute_cost_matrix(graph):
-    N = len(graph.nodes)
-    cost_matrix = np.zeros((N, N))
-    for i, n in enumerate(graph.nodes):
-        for j, m in enumerate(graph.nodes):
-            if i != j:
-                cost_matrix[i][j] = graph.edges[n, m]['dist']
-                # cost_matrix[i][j] = nx.shortest_path_length(graph, n, m, weight='weight')
-            else:
-                cost_matrix[i][j] = 0
-    return cost_matrix
-
-
-def compute_demand_array(graph):
-    demand_array = []
-    for _, n in enumerate(graph.nodes):
-        demand_array.append(graph.nodes[n]['sup'])
-    return demand_array
-
-
-def print_graph(Graph):
-    print("Nodes: {}".format(Graph.nodes.data()))
-    print("Edges: {}".format(Graph.edges.data()))
-
-
 def save_object(item, save_as="pickle_file"):
     file_path = "Saved/" + save_as + ".p"
     # if not exists(file_path):
@@ -266,35 +219,6 @@ def show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbh
     plt.show()
 
 
-"""
-route_to_distance: compute total distance of new routes.
-INPUT
-    graph: graph over which the routes are defined.
-    routes: matrix (number_vehicles x length of route) whose rows are the routes of each vehicle
-"""
 
 
-def routes_to_distance(graph, routes):
-    route_distance = 0
-    num_vehicles = len(routes)
 
-    for vehicle in range(num_vehicles):
-        for route_stop in range(len(routes[vehicle]) - 1):
-            route_distance += graph.edges[str(routes[vehicle][route_stop]), str(routes[vehicle][route_stop + 1])][
-                'dist']
-
-    return route_distance
-
-
-def compute_route_cost(route: [], cost_matrix: [[]]) -> float:
-    """
-    Computes cost of a given route.
-    :param route: array of visited stations.
-    :param cost_matrix: cost of edges.
-    :return: total cost of route
-    """
-    cost = 0
-    for index in range(len(route) - 1):
-        cost += cost_matrix[index, index + 1]
-
-    return cost

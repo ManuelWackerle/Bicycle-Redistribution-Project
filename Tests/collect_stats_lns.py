@@ -1,7 +1,7 @@
 from copy import deepcopy
 from load_csv import *
 from structure import ProblemInstance, Vehicle
-import vns
+import solvers
 import operators as ops
 import csv
 import time
@@ -61,7 +61,7 @@ def run_test(kwargs):
 
                     for trial in range(trials_per_graph):
                         saved_problem = deepcopy(problem)
-                        vns.greedy_routing_v1(problem, dist_weight=2, randomness=True)
+                        solvers.greedy_routing_v1(problem, dist_weight=2, randomness=True)
                         greedy_distance = problem.calculate_distances()
 
 
@@ -69,8 +69,8 @@ def run_test(kwargs):
                         results = [n, m, v, c, trial, gd]
 
                         start1 = time.time()
-                        vns.general_variable_nbh_search(problem, ordered_nbhs,
-                                                        change_nbh=vns.change_nbh_cyclic, timeout=300, verbose=0)
+                        solvers.general_variable_nbh_search(problem, ordered_nbhs,
+                                                            change_nbh=solvers.change_nbh_cyclic, timeout=300, verbose=0)
                         end1 = time.time()
 
                         distance = problem.calculate_distances()
@@ -80,12 +80,12 @@ def run_test(kwargs):
                         results.append(vt)
 
                         problem = saved_problem
-                        vns.random_routing(problem)
+                        solvers.random_routing(problem)
                         rd = round(problem.calculate_distances()) / 1000
 
                         start2 = time.time()
-                        vns.general_variable_nbh_search(problem, ordered_nbhs,
-                                                        change_nbh=vns.change_nbh_cyclic, timeout=300, verbose=0)
+                        solvers.general_variable_nbh_search(problem, ordered_nbhs,
+                                                            change_nbh=solvers.change_nbh_cyclic, timeout=300, verbose=0)
                         # vns.large_nbh_search(problem, large_nbhs, ordered_nbhs,
                         #     change_local_nbh=vns.change_nbh_cyclic,
                         #     change_large_nbh=vns.change_nbh_pipe,

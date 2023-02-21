@@ -1,7 +1,7 @@
 from copy import deepcopy
 from load_csv import *
 from structure import ProblemInstance, Vehicle
-import vns
+import solvers
 import operators as ops
 import csv
 import time
@@ -22,7 +22,7 @@ def run_test(kwargs):
     capacity_max = kwargs.get('capacity_max', 15)
     capacity_step = kwargs.get('capacity_step', 1)
 
-    nbh_change_set = kwargs.get('nbh_change_set', [vns.change_nbh_cyclic])
+    nbh_change_set = kwargs.get('nbh_change_set', [solvers.change_nbh_cyclic])
     ordered_nbhs = kwargs.get('ordered_nbhs',
                               [ops.intra_two_opt, ops.intra_segment_swap, ops.inter_two_opt,
                                ops.inter_segment_swap])
@@ -37,19 +37,19 @@ def run_test(kwargs):
 
     headings = ["graph_size", "graph_instance", "num_vehicles", "capacity", "trial", "greedy_distance",]
     for nbh_change in nbh_change_set:
-        if nbh_change == vns.change_nbh_cyclic:
+        if nbh_change == solvers.change_nbh_cyclic:
             headings.append("vns_cyclic_distance")
             headings.append("vns_cyclic_time")
 
-        elif nbh_change == vns.change_nbh_pipe:
+        elif nbh_change == solvers.change_nbh_pipe:
             headings.append("vns_pipe_distance")
             headings.append("vns_pipe_time")
 
-        elif nbh_change == vns.change_nbh_sequential:
+        elif nbh_change == solvers.change_nbh_sequential:
             headings.append("vns_seq_distance")
             headings.append("vns_seq_time")
 
-        elif nbh_change == vns.change_nbh_check_all:
+        elif nbh_change == solvers.change_nbh_check_all:
             headings.append("vns_all_distance")
             headings.append("vns_all_time")
 
@@ -74,7 +74,7 @@ def run_test(kwargs):
                     problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)
 
                     for trial in range(trials_per_graph):
-                        vns.greedy_routing_v1(problem, dist_weight=2, randomness=True)
+                        solvers.greedy_routing_v1(problem, dist_weight=2, randomness=True)
                         greedy_distance = problem.calculate_distances()
                         saved_problem = deepcopy(problem)
 
@@ -85,7 +85,7 @@ def run_test(kwargs):
                             problem = deepcopy(saved_problem)
 
                             start1 = time.time()
-                            vns.general_variable_nbh_search(problem, ordered_nbhs, change_nbh=nbh_change, timeout=300, verbose=0)
+                            solvers.general_variable_nbh_search(problem, ordered_nbhs, change_nbh=nbh_change, timeout=300, verbose=0)
                             end1 = time.time()
                             distance = problem.calculate_distances()
 
