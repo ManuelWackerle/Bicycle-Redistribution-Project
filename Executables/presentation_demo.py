@@ -75,7 +75,7 @@ random.seed(888)
 np.random.seed(369)
 start1 = time.time()
 distance_hist, time_hist, operation_hist = solvers.general_variable_nbh_search(
-    problem, kwargs['ordered_nbhs'], change_nbh=vns.change_nbh_cyclic, timeout=kwargs['timeout'], verbose=1)
+    problem, kwargs['ordered_nbhs'], change_nbh=solvers.change_nbh_cyclic, timeout=kwargs['timeout'], verbose=1)
 end1 = time.time()
 
 problem.display_results()
