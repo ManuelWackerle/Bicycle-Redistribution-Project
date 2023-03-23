@@ -44,7 +44,7 @@ def run_vns(problem):
     return problem
 
 def run_greedy_vns(problem):
-    solvers.greedy_routing_v1(problem, randomness=True)
+    solvers.greedy_routing_v1(problem, randomness=False)
     run_vns(problem)
     return problem
 
