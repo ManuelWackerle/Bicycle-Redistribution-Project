@@ -1,8 +1,8 @@
 import time
 import utils
-from load_csv import load_graph
+from loaders import load_graph
 from structure import ProblemInstance, Vehicle
-from load_csv import load_subset_from_ordered_nodes
+from loaders import load_subset_from_ordered_nodes
 from copy import deepcopy
 import os
 import numpy as np
@@ -27,7 +27,7 @@ for i in range(5):
 problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)
 
 # Solve the problem
-solvers.greedy_routing_v1(problem)
+solvers.greedy_routing(problem)
 problem_copy = deepcopy(problem)
 initial_dist = problem.calculate_distances()
 

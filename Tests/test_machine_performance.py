@@ -5,7 +5,7 @@ import os
 import time
 import csv
 from tqdm import tqdm
-from load_csv import load_subset_from_ordered_nodes
+from loaders import load_subset_from_ordered_nodes
 
 import solvers
 import operators as ops
@@ -22,12 +22,12 @@ kwargs = {
                      ops.intra_segment_swap,
                      ops.inter_two_opt,
                      ops.inter_segment_swap],
-    'distance_limit': 200000,  # meter
+    'distance_limit': 200000,  # metre
     'local_timeout': 2*60,  # second
     'local_verbose': 0,
 }
 
-PATH = os.path.join(os.getcwd(), 'results')
+PATH = os.path.join(os.getcwd(), os.pardir, 'Saved', 'results')
 
 def _get_problem_instance():
     graph, node_info = load_subset_from_ordered_nodes(nodes=kwargs['nodes'], centeredness=kwargs["centeredness"], randomness=False)
@@ -44,7 +44,7 @@ def run_vns(problem):
     return problem
 
 def run_greedy_vns(problem):
-    solvers.greedy_routing_v1(problem, randomness=False)
+    solvers.greedy_routing(problem, randomness=False)
     run_vns(problem)
     return problem
 

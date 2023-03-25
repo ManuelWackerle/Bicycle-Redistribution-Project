@@ -1,5 +1,5 @@
 from copy import deepcopy
-from load_csv import *
+from loaders import *
 from structure import ProblemInstance, Vehicle
 import solvers
 import operators as ops
@@ -74,7 +74,7 @@ def run_test(kwargs):
                     problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)
 
                     for trial in range(trials_per_graph):
-                        solvers.greedy_routing_v1(problem, dist_weight=2, randomness=True)
+                        solvers.greedy_routing(problem, dist_weight=2, randomness=True)
                         greedy_distance = problem.calculate_distances()
                         saved_problem = deepcopy(problem)
 

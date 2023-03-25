@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from copy import deepcopy
 from tqdm import tqdm
-from load_csv import load_graph
+from loaders import load_graph
 from structure import (
     Vehicle,
     ProblemInstance
@@ -22,7 +22,7 @@ from solvers import (
     change_nbh_cyclic,
     change_nbh_pipe,
     change_nbh_sequential,
-    greedy_routing_v1,
+    greedy_routing,
     general_variable_nbh_search,
     inter_two_opt,
     intra_two_opt,
@@ -117,7 +117,7 @@ for try_num in range(max_tries):
             pass
 
         # Compute initial solution
-        greedy_routing_v1(problem)
+        greedy_routing(problem)
         initial_distance = problem.calculate_distances()
         initial_distances[try_num].append(initial_distance)
 

@@ -33,7 +33,7 @@ def bare_general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_
 
     while nbh_index < len(ordered_nbhs) and time.time() < start_time + timeout:
         new_vehicle_routes = ordered_nbhs[nbh_index](problem_instance)
-        solvers.calculate_loading_MF(problem_instance)
+        solvers.calculate_loading_mf(problem_instance)
         problem_instance.display_results(False) if verbose == 1 else None
 
         # new_routes = [None]*len(new_vehicle_routes)
@@ -71,7 +71,7 @@ def run_vns_different_vehicles(problem: ProblemInstance, num_vehicles_array: [in
         problem.vehicles = current_vehicles
 
         # Compute distance
-        vns.greedy_routing_v1(problem)
+        vns.greedy_routing(problem)
         bare_general_variable_nbh_search(problem, ordered_nbhs, timeout=timeout)
         distances[len(problem.vehicles)] = problem.calculate_distances()
 

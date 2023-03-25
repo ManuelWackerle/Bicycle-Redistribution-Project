@@ -7,7 +7,7 @@ import csv
 from tqdm import tqdm
 from multiprocessing import Pool
 from functools import partial
-from load_csv import load_graph, load_subset_from_ordered_nodes, load_from_pickle
+from loaders import load_graph, load_subset_from_ordered_nodes, load_from_pickle
 
 from copy import deepcopy
 import solvers
@@ -54,14 +54,14 @@ def run_vns(problem):
     return problem
 
 def run_greedy_vns(problem):
-    vns.greedy_routing_v1(problem, randomness=True)
+    vns.greedy_routing(problem, randomness=True)
     run_vns(problem)
     return problem
 
 def run_parallel_lns(problem, num_removal):
     vehicles = ops.multi_remove_and_insert_station(problem, num_removal)
     problem.vehicles = vehicles
-    problem.calculate_loading_MF()
+    problem.calculate_loading_mf()
     run_vns(problem)
     return problem
 
@@ -82,7 +82,7 @@ def parallel_approach(problem):
         return best_distance
 
 def lns_approach(problem):
-    vns.greedy_routing_v1(problem, randomness=True)
+    vns.greedy_routing(problem, randomness=True)
     vns.large_nbh_search(problem,
                         kwargs['ordered_large_nbhs'],
                         kwargs['ordered_nbhs'],
@@ -107,7 +107,7 @@ def compare_approaches(problem):
 
 def paralell_large_nbh_search(problem):
     start_time = time.time()
-    vns.greedy_routing_v1(problem)
+    vns.greedy_routing(problem)
     best_instance = problem
     best_distance = problem.calculate_distances()
     while time.time() - start_time < kwargs['large_timeout']:

@@ -4,7 +4,7 @@ sys.path.append("/Users/hajime/workspace/tum/CaseStudies/Bicycle-Redistribution-
 import os
 import time
 import csv
-from load_csv import load_graph, load_subset_from_ordered_nodes, load_from_pickle
+from loaders import load_graph, load_subset_from_ordered_nodes, load_from_pickle
 
 from copy import deepcopy
 import solvers
@@ -78,7 +78,7 @@ def _get_operations_results(operations, patience=0):
     for operation in operations:
         # It should have the same problem_instance and greedyt
         problem_instance = _get_problem_instance()
-        vns.greedy_routing_v1(problem_instance)
+        vns.greedy_routing(problem_instance)
         time_taken, dist_improvement = _get_operation_results(problem_instance, operation, patience)
         times.append(time_taken)
         dists.append(dist_improvement)
