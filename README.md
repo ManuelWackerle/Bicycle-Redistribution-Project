@@ -46,7 +46,7 @@ problem.display_results(show_instructions=True)
 The `Executables` folder contains a small set of example workflows. 
 The `Tests` folder contains all the test that were used to measure and compare different performance indicators
 - `change_nbh`
-- `check_number_vehicles`
+- `check_number_vehicles`: Check the optimal number of vehicles to rebalance a given station using an interpolation algorithm
 - `collect_stats_vns`
 - `collect_stats_lns`
 - `LNS_test`
@@ -72,6 +72,3 @@ The assumptions are not crucial and can be easily omitted, but are used in the c
 ### Routing assumptions:  
 •	Stations may be visited multiple times by the same or different vehicles.  
 •	Monotonicity regarding pickup and delivery operations. A vehicle is only allowed to load bicycles at load stations and pickup bicycles from pickup stations. In other words, the number of bikes at each station is allowed to only decrease or only increase.  
-
-
-
