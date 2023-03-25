@@ -8,7 +8,8 @@ import plotly.graph_objects as go
 import os
 import datetime
 import time
-from os.path import exists
+import os.path
+
 
 rc('font', **{'family': 'lmodern', 'serif': ['Latin  Modern'], 'size': 22})
 rc('text', usetex=True)
@@ -33,29 +34,22 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 
-def display_graph(Graph, node_pos=None, edge_list=None, title=None):
-    header = "Graph" if title is None else title
-    use_pos = node_pos is not None
-    pos = {} if use_pos else None
-    labels = {}
-    for node, attr in Graph.nodes.items():
-        labels[node] = "{}".format(node)  # attr['sup'])
-        if use_pos:
-            pos[node] = node_pos[node]['pos']
-    nx.draw_networkx(Graph, pos=pos, edgelist=edge_list, node_size=300, node_color='#FEECD2', labels=labels)
-    plt.title(title)
-    plt.draw()
-    plt.show()
-
-
-def visualize_routes(routes, node_data):
+def visualize_routes(routes, node_data, save_figure=False):
+    """
+        Plot routing information on the model using matplotlib
+        :param routes: an array of routes, each route a sequence of stations visited
+        :param node_data: a dictionary of dictionaries of node information, containing at least positional information
+        :param save_figure: save the figure in the Saved folder as 'routes_<date_time>.png'
+    """
     station_color = 'grey'
     random.seed(0)
     get_colors = lambda n: ["#%06x" % random.randint(0, 0xFFFFFF) for _ in range(n)]
     route_color = get_colors(len(routes))
+
     for i in range(len(node_data)):
         x, y = node_data[str(i)]['pos']
         plt.scatter(x, y, color=station_color)
+
     for route_num, route in enumerate(routes):
         for j, station in enumerate(route):
             if j == 0:
@@ -66,16 +60,25 @@ def visualize_routes(routes, node_data):
             y_line = [node_data[str(previous_station)]['pos'][1], node_data[str(current_station)]['pos'][1]]
             plt.plot(x_line, y_line, color=route_color[route_num], zorder=-1)
     plt.axis('equal')
-    # plt.savefig('Saved/routes.png')
+
+    if save_figure:
+        now = datetime.datetime.now()
+        print('Plot generated: ' + now.strftime("%d-%m-%Y_%H-%M-%S"))
+        root = os.path.dirname(os.path.abspath(os.getcwd()))
+        folder = os.path.join(root, 'Saved', 'plots')
+        plt.savefig(folder + '/routes_' + now.strftime("%d-%m-%y_%H-%M-%S"))
+        time.sleep(1)
+
     plt.show()
 
 
 def visualize_routes_go(routes, node_data):
-    station_color = 'blue'
+    """
+        Plot routing information in a browser window using go
+        :param routes: an array of routes, each route a sequence of stations visited
+        :param node_data: a dictionary of dictionaries of node information, containing at least positional information
+    """
     random.seed(0)
-    get_colors = lambda n: ["#%06x" % random.randint(0, 0xFFFFFF) for _ in range(n)]
-    route_color = get_colors(len(routes))
-
     x_stations = []
     y_stations = []
 
@@ -85,12 +88,7 @@ def visualize_routes_go(routes, node_data):
     x_stations = np.array(x_stations)
     y_stations = np.array(y_stations)
 
-    # create a plot
     fig = go.Figure()
-
-    # plot stations
-
-    routes_buttons = []
 
     for route_num, route in enumerate(routes):
         route = list(map(int, route))
@@ -99,24 +97,6 @@ def visualize_routes_go(routes, node_data):
         for visit, station in enumerate(route):
             x_route.append(x_stations[station])
             y_route.append(y_stations[station])
-
-        # routes_buttons.append(dict(
-        #     args=[ {
-        #         'type':'Scattermapbox',
-        #         'mode':'lines',
-        #         'lon':x_route,
-        #         'lat':y_route,
-        #         'marker':{'size': 10},
-        #         'margin': {'l': 0, 't': 0, 'b': 0, 'r': 0},
-        #         'mapbox':{
-        #     'center': {'lon': 10, 'lat': 10},
-        #     'style': "stamen-terrain",
-        #     'center': {'lon': -20, 'lat': -20},
-        #     'zoom': 1}
-        #     }],
-        #
-        #     label='Route #' + str(route_num),
-        #     method='update'))
 
         fig.add_trace(go.Scattermapbox(
             mode="lines",
@@ -141,13 +121,6 @@ def visualize_routes_go(routes, node_data):
             'style': "stamen-terrain",
             'zoom': 11})
 
-    # fig.update_layout(
-    #     updatemenus=[
-    #         dict(
-    #             # type="buttons",
-    #             buttons=routes_buttons)
-    #     ]
-    # )
     fig.show()
 
 
@@ -167,10 +140,7 @@ def edge_data_as_numpy(graph: nx.Graph, data_str):
 
 def save_object(item, save_as="pickle_file"):
     file_path = "Saved/" + save_as + ".p"
-    # if not exists(file_path):
     pickle.dump(item, open(file_path, "wb"))
-    # else: #Todo: automatically rename file with incrementing number and save
-    #     raise Fi/leExistsError
 
 
 def extract_saved_object(file_name):
@@ -178,10 +148,16 @@ def extract_saved_object(file_name):
 
 
 def show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbhs, change_nbh_name):
-    # fig = plt.figure(figsize=(9, 6))
+    """
+        Plot distance improvement per computation time for each operator during a VNS run
+        :param distance_hist: array of the distances at each iteration
+        :param time_hist: array of time points at the end of each iteration
+        :param operation_hist: array of which operator was used at each iteration
+        :param ordered_nbhs: array of the set of operators used
+        :param change_nbh_name: type of neighbourhood change method used during the VNS run
+    """
+
     fig, ax = plt.subplots(figsize=(19, 13))
-    # get_colors = lambda n: ["#%06x" % random.randint(0, 0xFFFFFF) for _ in range(n)]
-    # colors = get_colors(len(ordered_nbhs))
     colors = ['#F5A623', '#9013FE', '#7ED321', '#4A90E2', '#F8E71C', '#D0021B', 'w']
 
     distance_hist = [x / 1000 for x in distance_hist]
@@ -192,11 +168,9 @@ def show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbh
 
     plt.plot(time_hist, distance_hist, color='lightgray')
 
-
-    for k,v in operation_dict.items():
+    for k, v in operation_dict.items():
         if k >= len(ordered_nbhs):
             continue
-
         plt.plot(v[0], v[1], color=colors[k], marker='o', linestyle='None', label=ordered_nbhs[k].__name__)
 
     # for i in range(len(time_hist) - 2):
@@ -217,8 +191,3 @@ def show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbh
     fig.savefig(folder + '/improvement_gr_' + now.strftime("%d-%m-%y_%H-%M-%S"))
     time.sleep(1)
     plt.show()
-
-
-
-
-

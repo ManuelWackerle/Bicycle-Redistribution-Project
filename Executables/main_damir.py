@@ -4,9 +4,9 @@ This file is temporary and should be deleted when the project is complete
 """
 import time
 import utils
-from load_csv import load_graph
-from load_csv import load_subset_from_ordered_nodes
-from load_csv import load_from_pickle
+from loaders import load_graph
+from loaders import load_subset_from_ordered_nodes
+from loaders import load_from_pickle
 from structure import ProblemInstance, Vehicle
 from copy import deepcopy
 import solvers
@@ -15,9 +15,9 @@ from Tests.test_with_various_graphs import run_test
 
 import time
 import utils
-from load_csv import load_graph
+from loaders import load_graph
 from structure import ProblemInstance, Vehicle
-from load_csv import load_subset_from_ordered_nodes
+from loaders import load_subset_from_ordered_nodes
 from copy import deepcopy
 import os
 import numpy as np
@@ -58,7 +58,7 @@ for i in range(kwargs["number_of_vehicles"]):
 # Mount problem instance with and without zero demand nodes
 problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)
 
-solvers.greedy_routing_v1(problem)
+solvers.greedy_routing(problem)
 initial_dist = problem.calculate_distances()
 
 # Define local neighbours

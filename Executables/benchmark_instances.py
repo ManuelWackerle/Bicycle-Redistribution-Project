@@ -1,21 +1,10 @@
+from loaders import load_from_pickle
+from loaders import get_instances_names
 import time
-import utils
-
-from load_csv import load_from_pickle
-from load_csv import get_instances_names
 from structure import ProblemInstance, Vehicle
-from copy import deepcopy
-import solvers
-# from tests.test_with_various_graphs import run_test
-import time
-import utils
-from load_csv import load_graph
-from structure import ProblemInstance, Vehicle
-from load_csv import load_subset_from_ordered_nodes
 from copy import deepcopy
 import os
-import numpy as np
-import solvers
+import solvers as vns
 from matplotlib import pyplot as plt
 import operators as ops
 
@@ -36,7 +25,7 @@ for instance_name in instances_names:
         'centeredness': 5,
         'number_of_vehicles': vehicle_number,
         'vehicle_capacity': vehicle_capacity,
-        'ordered_nbhs': [ops.inter_two_opt, ops.intra_two_opt, ops.intra_or_opt, ops.destroy_local],
+        'ordered_nbhs': [ops.inter_two_opt, ops.intra_two_opt, ops.intra_segment_swap, ops.destroy_local],
         'ordered_large_nbhs': [1, 3, 5, 8, 10],
         'local_timeout': 2 * 60,  # second
         'large_timeout': 60 * 60,  # second
@@ -55,7 +44,7 @@ for instance_name in instances_names:
     # Mount problem instance with and without zero demand nodes
     problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)
 
-    solvers.greedy_routing_v1(problem)
+    vns.greedy_routing(problem)
     initial_dist = problem.calculate_distances()
 
 
@@ -70,44 +59,27 @@ for instance_name in instances_names:
     """
     start = time.time()
     problem_copy = deepcopy(problem)
-    distance_hist_lns, time_hist_lns, operation_hist_lns, time_shake, shake_effect = vns.large_nbh_search(problem_copy,
-                                                                                                          ordered_large_nbhs,
-                                                                                                          ordered_nbhs,
-                                                                                                          change_local_nbh=vns.change_nbh_sequential,
-                                                                                                          change_large_nbh=solvers.change_nbh_pipe,
-                                                                                                          large_nbh_operator=ops.destroy_rebuild,
-                                                                                                          timeout=
-                                                                                                          kwargs[
-                                                                                                              "local_timeout"],
-                                                                                                          large_timeout=
-                                                                                                          kwargs[
-                                                                                                              "large_timeout"],
-                                                                                                          local_verbose=
-                                                                                                          kwargs[
-                                                                                                              "local_verbose"],
-                                                                                                          large_verbose=
-                                                                                                          kwargs[
-                                                                                                              "large_verbose"]
-                                                                                                          )
+    distance_hist_lns, time_hist_lns, operation_hist_lns, time_shake, shake_effect = \
+        vns.large_nbh_search(problem_copy,ordered_large_nbhs, ordered_nbhs, change_local_nbh=vns.change_nbh_sequential, 
+                             change_large_nbh=vns.change_nbh_pipe, large_nbh_operator=ops.destroy_rebuild, 
+                             timeout=kwargs["local_timeout"], large_timeout=kwargs["large_timeout"],
+                             local_verbose=kwargs["local_verbose"], large_verbose=kwargs["large_verbose"])
     problem.display_results()
     print('LNS:', time_hist_lns)
     """
     LNS with multiple_remove_insert
     """
+
+
     start = time.time()
     problem_copy = deepcopy(problem)
-    distance_hist_lns_multi, time_hist_lns_multi, operation_hist_lns_multi, time_shake_multi, shake_effect_multi = vns.large_nbh_search(
-        problem_copy,
-        ordered_large_nbhs,
-        ordered_nbhs,
-        change_local_nbh=vns.change_nbh_sequential,
-        change_large_nbh=solvers.change_nbh_pipe,
-        large_nbh_operator=ops.multi_remove_and_insert_station,
-        timeout=kwargs["local_timeout"],
-        large_timeout=kwargs["large_timeout"],
-        local_verbose=kwargs["local_verbose"],
-        large_verbose=kwargs["large_verbose"]
-    )
+    distance_hist_lns_multi, time_hist_lns_multi, operation_hist_lns_multi, time_shake_multi, shake_effect_multi = \
+        vns.large_nbh_search(problem_copy, ordered_large_nbhs, ordered_nbhs, change_local_nbh=vns.change_nbh_sequential,
+                             change_large_nbh=vns.change_nbh_pipe,
+                             large_nbh_operator=ops.multi_remove_and_insert_station,
+                             timeout=kwargs["local_timeout"], arge_timeout=kwargs["large_timeout"],
+                             local_verbose=kwargs["local_verbose"],large_verbose=kwargs["large_verbose"])
+
     print('LNS multi:', time_hist_lns_multi)
     print("*** Final result using LNS ***")
     print(f"Time taken {(time.time() - start) / 60} [m]")
@@ -124,7 +96,7 @@ for instance_name in instances_names:
     problem_copy = deepcopy(problem)
     distance_hist, time_hist, operation_hist = vns.general_variable_nbh_search(problem_copy,
                                                                                ordered_nbhs,
-                                                                               change_nbh=solvers.change_nbh_sequential,
+                                                                               change_nbh=vns.change_nbh_sequential,
                                                                                verbose=kwargs["local_verbose"],
                                                                                timeout=kwargs["local_timeout"]
                                                                                )

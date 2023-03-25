@@ -1,21 +1,19 @@
 """
 Definitions of the base classes used in the problem.
 """
-from copy import deepcopy
-
-import networkx as nx
 from utils import *
 
 
 class Vehicle(object):
     """
-    Vehicle: contains vehicle identification, capacity and vehicle route .
+    Vehicle: contains vehicle identification, capacity and vehicle route information.
     """
     def __init__(self, capacity: int, vehicle_id: str, distance_limit=100):
         """
-        Initializes the vehicle
+        Initializes the vehicle class
         :param capacity: Maximum number of bikes that the vehicle can carry at any time
         :param vehicle_id: License plate or other identifier of vehicle
+        :param distance_limit: -not used-
         """
         self._capacity = capacity
         self._id = vehicle_id
@@ -24,7 +22,6 @@ class Vehicle(object):
         self._distance = 0
         self._current_position = None
         self._current_load = 0
-        self._modified = True
         self._distance_limit = distance_limit
 
     def add_stop(self, stop, load):
@@ -47,15 +44,9 @@ class Vehicle(object):
 
     def set_route(self, route):
         self._route = route
-        self._modified = True
 
     def update_distance(self, dist):
         self._distance = dist
-
-    def modified(self):
-        modified = self._modified
-        self._modified = False
-        return modified
 
     def route(self):
         return self._route
@@ -85,17 +76,19 @@ class Vehicle(object):
         self._current_position = None
         self._current_load = 0
 
+
 class ProblemInstance:
     """
-    ProblemInstance: contains map and vehicles operating.
-        model: graph of possible bike locations.
-        vehicles: list of vehicles operating.
-        imbalance: number of non-balanced bikes. -1 if not computed.
-        allocated: number of bikes that the current routes allocate.
-        verbose: for debugging purposes. 0: execute silently, 1: display warnings only, 2: display in-between steps
+    ProblemInstance: contains map (graph information) and operating vehicles
     """
     def __init__(self, input_graph: nx.Graph, vehicles: [], node_data=None, depot='0', verbose=0):
-        self._verbose = verbose
+        """
+            :param input_graph: the model/graph of possible bike locations.
+            :param vehicles: array of vehicles
+            :param node_data: a dictionary of dictionaries of node information; position and id
+            :param depot: id of the node to be used as the depot
+            :param verbose: for debugging purposes. 0: execute silently, 1: display warnings only, 2: display all steps
+        """
 
         # problem instance variables
         self.model = input_graph
@@ -108,18 +101,11 @@ class ProblemInstance:
         self.total_sink = 0
         self.imbalance = 0
         self.allocated = 0
-        self._initialize_tracking_variables(input_graph)
         self.mf_graph = None
         self.average_distance = 0
 
-        # G.
-        # self.neighbourhoods = []  # keys of neighbourhoods to be searched.
-        # self.nh_dict = {"remove_station": self.remove_one_station}  # functions associated to neighbourhoods
-        # self.current_nh = 0
-
-    def show_header(self, header_str):
-        if self._verbose > 1:
-            print(bcolors.HEADER + header_str + bcolors.ENDC)
+        self._initialize_tracking_variables(input_graph)
+        self._verbose = verbose
 
     def show_info(self, info_string):
         if self._verbose > 1:
@@ -132,7 +118,6 @@ class ProblemInstance:
     def _initialize_tracking_variables(self, input_graph: nx.Graph):
         """
         Loops once through all the input data to collect additional information about the graph.
-        Setting
         """
         for n, data in input_graph.nodes.items():
             d = data['sup']
@@ -143,22 +128,33 @@ class ProblemInstance:
         if self.total_sink == self.total_source:
             self.imbalance = self.total_source
         else:
-            pass
-            # TODO: handle case where sink & source don't match, e.g. by adding an additional
-            #  node to the graph or changing depot value
+            self.imbalance = max(self.total_source, self.total_sink)
+            self.model.nodes[self.depot]['sup'] = self.total_sink - self.total_source
 
-    def distance_route_segment(self, route:[], start_indx, stop_indx):
+    def distance(self, node1, node2):  # wrapper for distance function
+        return self.model.edges[node1, node2]['dist']
+
+    def distance_in_route(self, route: [], start_index, stop_index):
+        """
+            Calculates the directed distance on a route between two stops, stop1 and stop2 can be in reverse
+            :param route: The route as an array of stops
+            :param start_index: position index of the start node
+            :param stop_index: position index of the stop node
+            :return dist: the distance travelled by traversing the segment of route from start to stop
+        """
         dist = 0
-        step = 1 if start_indx < stop_indx else -1 #calculate
-        for i in range(start_indx, stop_indx, step):
+        step = 1 if start_index < stop_index else -1
+        for i in range(start_index, stop_index, step):
             u, v = route[i], route[i + step]
             dist += self.distance(u, v)
         return dist
 
-    def distance(self, node1, node2): #Wrapper for distance function
-        return self.model.edges[node1, node2]['dist']
-
     def calculate_distances(self, vehicles=None):
+        """
+            Given a set of vehicles with corresponding routes, calculate the total distance travelled
+            :param vehicles: array of vehicle objects
+            :return total: the total distance travelled in metres
+        """
         total = 0
         if vehicles is None:
             vehicles = self.vehicles
@@ -168,6 +164,11 @@ class ProblemInstance:
         return total
 
     def calculate_distance(self, vehicle):
+        """
+            Given a single vehicles with a corresponding route, calculate the distance travelled by the vehicle
+            :param vehicle: an object of class Vehicle
+            :return dist: the distance travelled in metres
+        """
         dist = 0
         prev = vehicle.route()[0]
         for s in range(1, len(vehicle.route())):
@@ -176,23 +177,11 @@ class ProblemInstance:
         vehicle.update_distance(dist)
         return dist
 
-    def variance_indicator(self, vehicle, tol=0.2):
-        """
-        Make sure to call calculate_distances before calling this method
-        """
-        indicator = 0
-        if vehicle.distance() < (1 - tol) * self.average_distance:
-            indicator = -1
-        elif vehicle.distance() > (1 + tol) * self.average_distance:
-            indicator = 1
-        return indicator
-
     def check_distance_limits(self):
-        """check distance limit for all vehicles
-
-        Returns:
-            Bool: Result of feasibility check for all vehicles
-            List: Distance for each vehicles
+        """
+            Check distance limit for all vehicles
+            :return satisfied: Result of feasibility check for all vehicles
+            :return distances: distance for each vehicle
         """
         distances = []
         constraint = []
@@ -200,56 +189,51 @@ class ProblemInstance:
             dist = self.calculate_distance(vehicle)
             distances.append(dist)
             constraint.append(dist <= vehicle.distance_limit())
-        return all(constraint), distances
+        satisfied = all(constraint)
+        return satisfied, distances
 
     def get_all_capacities(self) -> dict:
-        """
-        :return: Array of capacities of the vehicles
-        """
         vehicle_capacities = {}
         for vehicle in self.vehicles:
             vehicle_capacities[vehicle.id] = vehicle.capacity()
-
         return vehicle_capacities
 
     def get_all_routes(self, vehicles=None):
         if vehicles is None:
             vehicles = self.vehicles
-
         current_routes = [None]*len(vehicles)
-
         for vehicle_index, vehicle in enumerate(vehicles):
             current_routes[vehicle_index] = vehicle.route()
-
         return current_routes
 
-    def assign_routes_to_vehicles(self, routes):
-        """
-        Set the routes for each vehicle
-        :param  routes: array of Route elements to be set for the vehicles
-        """
-        assert len(routes) == len(self.vehicles), "Number of routes and vehicles don't match, can't set routes.\n"
+    #Todo: Can the below code be removed?
 
-        # Check compatibility of vehicles and routes. For each route, we must have a vehicle with sufficient capacity
-        assert set(self.get_all_capacities()) == set(routes[:, 0]), "Vehicle capacities and route loads don't match"
-
-        unused_vehicles = self.vehicles
-        unassigned_routes = routes
-
-        for route in unassigned_routes:
-            for vehicle in unused_vehicles:
-                if vehicle.capacity == route._min_capacity_needed:
-                    # Assign route to vehicle
-                    vehicle.route = route
-
-                    # Delete route and vehicle from unused
-                    unused_vehicles.delete(vehicle)
-                    unassigned_routes.delete(route)
-
-                    # Move on
-                    break
-
-        return len(unassigned_routes)
+    # def assign_routes_to_vehicles(self, routes):
+    #     """
+    #     Set the routes for each vehicle
+    #     :param  routes: array of Route elements to be set for the vehicles
+    #     """
+    #     assert len(routes) == len(self.vehicles), "Number of routes and vehicles don't match, can't set routes.\n"
+    #
+    #     # Check compatibility of vehicles and routes. For each route, we must have a vehicle with sufficient capacity
+    #     assert set(self.get_all_capacities()) == set(routes[:, 0]), "Vehicle capacities and route loads don't match"
+    #
+    #     unused_vehicles = self.vehicles
+    #     unassigned_routes = routes
+    #
+    #     for route in unassigned_routes:
+    #         for vehicle in unused_vehicles:
+    #             if vehicle.capacity == route._min_capacity_needed:
+    #                 # Assign route to vehicle
+    #                 vehicle.route = route
+    #
+    #                 # Delete route and vehicle from unused
+    #                 unused_vehicles.delete(vehicle)
+    #                 unassigned_routes.delete(route)
+    #
+    #                 # Move on
+    #                 break
+    #     return len(unassigned_routes)
 
     def compute_imbalance(self, auxiliary_graph=None):
         if auxiliary_graph is None:
@@ -263,47 +247,16 @@ class ProblemInstance:
         distances = edge_data_as_numpy(self.model, 'dist')
         return distances.mean()
 
-    def intialize_flow_graph(self):
-        # Generate Max Flow graph
-        total_source, total_sink = 0, 0
-        mf_graph = nx.DiGraph()
-        mf_graph.add_node('s')  # source node
-        mf_graph.add_node('t')  # sink node
-        for v, d in self.model.nodes(data='sup'):
-            if d > 0:
-                total_source += d
-                mf_graph.add_edge('s', v, capacity=d)
-            elif d < 0:
-                total_sink -= d
-                mf_graph.add_edge(v, 't', capacity=-d)
-        self.imbalance = total_source
-
-        for l, vehicle in enumerate(self.vehicles):
-            route = vehicle.route()
-            prev_node = 0
-            for r, node in enumerate(route):
-                node_str = "{}-{}".format(l, r)
-                demand = self.model.nodes[node]['sup']
-                if demand > 0:
-                    mf_graph.add_edge(node, node_str)
-                elif demand < 0:
-                    mf_graph.add_edge(node_str, node)
-                if prev_node != 0:
-                    mf_graph.add_edge(prev_node, node_str, capacity=vehicle.capacity())
-                prev_node = node_str
-        self.mf_graph = mf_graph
-
-    def calculate_loading_MF(self, check_feasibility_only=False, start_load=0):
+    def calculate_loading_mf(self, check_feasibility_only=False, start_load=0):
         """
-        Given a set of vehicle routes, calculates the optimal loading instructions for each route using a Maximum flow computation.
-        Use this function if monotonicity is assumed.
-        :param prob: Problem instance
-        :param start_load: number of bicycles that
-        :modifies vehilce.loads: The instructions for how to load and unload the bicycles.
+        Given a set of vehicle routes, calculates the optimal loading instructions for each route using a
+        maximum flow computation. Use this function if monotonicity is assumed.
+        :param check_feasibility_only: if true will not calculate explicit loading instructions
+        :param start_load: number of bicycles at the depot at the start of the tours
+        :modifies vehicle.loads: The instructions for how to load and unload the bicycles.
         """
 
-        # Generate Max Flow graph
-        self.show_header("Generating Max flow graph")
+        # Generate max flow graph
         total_source, total_sink = 0, start_load
         mf_graph = nx.DiGraph()
         mf_graph.add_node('s')  # source node
@@ -321,10 +274,10 @@ class ProblemInstance:
                 total_sink -= d
                 mf_graph.add_edge(v, 't', capacity=-d)
 
-        for l, vehicle in enumerate(self.vehicles):
+        for k, vehicle in enumerate(self.vehicles):
             prev_node = 0
             for r, node in enumerate(vehicle.route()):
-                node_str = "{}-{}-{}".format(node, l, r)
+                node_str = "{}-{}".format(k, r)
                 demand = self.model.nodes[node]['sup']
                 if demand > 0:
                     mf_graph.add_edge(node, node_str)
@@ -336,8 +289,7 @@ class ProblemInstance:
         self.show_info("Graph generated with {n} nodes and {e} edges. Source flow: {s}, Sink flow: {t}"
                        .format(n=len(mf_graph.nodes), e=len(mf_graph.edges), s=total_source, t=total_sink))
 
-        # Solve Max Flow Problem
-        self.show_header("Solving the Max flow problem ")
+        # Solve max flow problem
         self.imbalance = total_source - start_load
         if total_sink != total_source:
             self.show_warning("mismatch in source and sink flow capacity, no exact solution can exist.")
@@ -349,21 +301,19 @@ class ProblemInstance:
         if not check_feasibility_only:
             if value != total_source or value != total_sink:
                 self.show_warning(
-                    "Bikes can not be allocated to full capacity. Source flow: {s}, Sink flow: {t}, Allocated: {a}"
-                        .format(s=total_source, t=total_sink, a=value))
+                    "Bikes can not be allocated to full capacity. Source flow: {s},"
+                    " Sink flow: {t}, Allocated: {a}".format(s=total_source, t=total_sink, a=value))
             else:
                 self.show_info("Bike allocation is exact. Total allocated bicycles: {}".format(value))
 
-            self.show_header("Generating instructions")
-            for l, vehicle in enumerate(self.vehicles):
+            # Generate loading instructions
+            for k, vehicle in enumerate(self.vehicles):
                 loads = []
                 path = vehicle.route()
-                prev = path[0]
-                for r, node in enumerate(path[1:], 1):
-                    prev_str = "{}-{}-{}".format(prev, l, r - 1)
-                    node_str = "{}-{}-{}".format(node, l, r)
+                for r, _ in enumerate(path[1:], 1):
+                    prev_str = "{}-{}".format(k, r - 1)
+                    node_str = "{}-{}".format(k, r)
                     loads.append(data[prev_str][node_str])
-                    prev = node
                 vehicle.set_loads(loads)
 
     def remove_unused_stops(self):
@@ -382,10 +332,10 @@ class ProblemInstance:
             for r in remove:
                 v.remove_stop(r)
 
-
     def display_results(self, show_instructions=True):
         """
-        Displays the information in routes and instructions in a human-readable way
+            Displays the information in routes and instructions in a human-readable way
+            :param show_instructions: set to True to show loading instructions at each stop
         """
         results = "Results\t\t"
 
@@ -400,12 +350,11 @@ class ProblemInstance:
                     diff = load - prev_load
                     prev_load = load
                     instr = 'l' if diff >= 0 else 'u'
-                    # a, b = self.routes[l][s], self.routes[l][s+1]
-                    # dist = self.model.edges[a, b]['dist'] if a != b else 0
                     line += "|{:>3}: ".format(v.route()[s]) + instr + "{:<2}({:2})".format(abs(diff), load)
                     last = s
                 results += line + "|{:>3}: ".format(v.route()[last + 1]) + "u{:<2}( 0)|".format(prev_load)
             results += "\n"
+
         d = round(self.calculate_distances()/1000, 3)
         success = bcolors.OKGREEN if self.allocated == self.imbalance else bcolors.FAIL
         results += bcolors.BOLD + bcolors.OKGREEN + "Total Distance:{:10}km".format(d) + bcolors.ENDC + " ||  "
