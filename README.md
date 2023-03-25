@@ -46,7 +46,7 @@ problem.display_results(show_instructions=True)
 The `Executables` folder contains a small set of example workflows. 
 The `Tests` folder contains all the test that were used to measure and compare different performance indicators
 - `change_nbh`
-- `check_number_vehicles`
+- `check_number_vehicles`: Check the optimal number of vehicles to rebalance a given station using an interpolation algorithm
 - `collect_stats_vns`
 - `collect_stats_lns`
 - `LNS_test`
