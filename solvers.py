@@ -146,37 +146,6 @@ def load_all_at_depot(prob, graph_copy):
 Code for the general VNS.
 """
 
-# Todo: can the code below be deleted?
- 
-# def sequential_variable_nbh_descent(problem_instance, ordered_nbhs: [], timeout=10) -> [[]]:
-#     """
-#         ** The idea behind Variable Neighbourhood descent, VND. **
-#         If a solution is a local optimizer with respect to several neighbourhood structures, then it is more likely to 
-#         be a global optimizer. A sequential VND explores neighbourhoods in a sequence. Works as follows:
-#         1.  Several neighbourhood structures are ordered in a list, N = {N1,..., Nl_max}
-#         2.  Starting on a given solution, x, the sequential VND explores Nl for 1<=l<=lmax one after the other in the
-#             established order. The exploration of neighbourhoods is done in first improvement fashion
-#         3.  As soon as an improvement in a given neighbourhood occurs, the process is restarted from the first
-#          neighbourhood (and in the same order) with the new solution
-#         4.  The process stops when the current solution can not be improved with respect to any neighbourhood
-#     """
-#     loop = True
-#     best_routes = problem_instance.get_all_routes()
-#     while loop:
-# 
-#         current_nbh = 0  # Start at the first neighbourhood in the list.
-#         best_routes = problem_instance.get_all_routes()
-# 
-#         time_start = time.time()
-#         while current_nbh < len(ordered_nbhs) and time.time() < time_start + timeout:
-#             best_vehicles_in_nbh = ordered_nbhs[current_nbh](problem_instance)
-#             change_nbh_sequential(problem_instance, best_vehicles_in_nbh, current_nbh)
-# 
-#             loop = not (problem_instance.calculate_distances() ==
-#                         problem_instance.calculate_distances(best_vehicles_in_nbh))
-#             break
-#     return best_routes
-
 
 def change_nbh_sequential(problem, modified_vehicles, nbh, nbh_last_success, ordered_nbhs, verbose) -> int:
     """
@@ -256,16 +225,6 @@ def change_nbh_check_all(problem, modified_vehicles, nbh, nbh_last_success: [], 
         return len(ordered_nbhs)
     else:
         return -1
-
-
-# Todo: can the code below be deleted?
-
-# def compare_vehicle_routes(a_set_of_routes: [[]], another_set_of_routes: [[]]) -> float:
-#     """
-#     We express the structural difference between two sets of routes as the number of different stations. The higher
-#     the number of non-common station, the less similar the stations are.
-#     """
-#     return np.count_nonzero(a_set_of_routes != another_set_of_routes)
 
 
 def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=change_nbh_sequential,

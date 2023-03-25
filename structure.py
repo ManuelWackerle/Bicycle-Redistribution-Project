@@ -206,35 +206,6 @@ class ProblemInstance:
             current_routes[vehicle_index] = vehicle.route()
         return current_routes
 
-    #Todo: Can the below code be removed?
-
-    # def assign_routes_to_vehicles(self, routes):
-    #     """
-    #     Set the routes for each vehicle
-    #     :param  routes: array of Route elements to be set for the vehicles
-    #     """
-    #     assert len(routes) == len(self.vehicles), "Number of routes and vehicles don't match, can't set routes.\n"
-    #
-    #     # Check compatibility of vehicles and routes. For each route, we must have a vehicle with sufficient capacity
-    #     assert set(self.get_all_capacities()) == set(routes[:, 0]), "Vehicle capacities and route loads don't match"
-    #
-    #     unused_vehicles = self.vehicles
-    #     unassigned_routes = routes
-    #
-    #     for route in unassigned_routes:
-    #         for vehicle in unused_vehicles:
-    #             if vehicle.capacity == route._min_capacity_needed:
-    #                 # Assign route to vehicle
-    #                 vehicle.route = route
-    #
-    #                 # Delete route and vehicle from unused
-    #                 unused_vehicles.delete(vehicle)
-    #                 unassigned_routes.delete(route)
-    #
-    #                 # Move on
-    #                 break
-    #     return len(unassigned_routes)
-
     def compute_imbalance(self, auxiliary_graph=None):
         if auxiliary_graph is None:
             auxiliary_graph = self.model
