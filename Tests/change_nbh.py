@@ -3,7 +3,6 @@ The goal of this test is to compare all the types of neighbourhood changes with 
 produce the best results.
 """
 
-import utils
 import os
 import csv
 import sys
@@ -11,7 +10,6 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 from copy import deepcopy
-from tqdm import tqdm
 from loaders import load_graph
 from structure import (
     Vehicle,

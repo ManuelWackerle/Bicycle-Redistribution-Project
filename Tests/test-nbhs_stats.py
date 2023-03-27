@@ -11,9 +11,7 @@ import solvers
 import operators as ops
 from structure import ProblemInstance, Vehicle
 from matplotlib import pyplot as plt
-from matplotlib import colors as mcolors
 import numpy as np
-from statistics import stdev
 
 kwargs = {
     'nodes': 250,

@@ -2,14 +2,34 @@
 Case Studies, Project 3. Bicycle Redistribution Project
 
 ## How to use the Code
-### File Structure
+### Structure
+
+#### Main Files
 - `loaders` contains functions to read in data from an external source.
 - `structure` contains the classes used to model and store information about a given instance of the problem.
 - `solvers` contains methods use for producing initial solutions as well as for the VNS and LNS.
 - `operators` is a collection of permutation operators used in the VNS to search neighbourhoods in the solution space.
 - `utils` contains auxiliary methods used throughout the project such as plotters.
+#### Folders
+- `Executables` all the executable files including tests
+- `Saved` all the saved output of plots, tests and statistics
+- `MVG Code` the code for processing the MVG data 
+- `Problem Instances` a collection of csv and pickle data from different data sets
+#### Dependencies
+| Package      | Version   |
+|--------------|-----------|
+| networkx     | 2.8.8     |
+| numpy        | 1.21.4    |
+| scipy        | 1.7.2     |
+| matplotlib   | 3.5.0     |
+| plotly       | 5.11.0    |
+| pickleshare  | 0.7.5     |
+| tqdm         | 4.64.1    |
+| haversine    | 2.7.0     |
+
+
 ### Loading data and creating an instance of the problem
-The code is written to work with input in the form of node infromation (stations or bins) as well as edge or distance information
+The code is written to work with input in the form of node information (stations or bins) as well as edge or distance information
 - csv with node information must be in the form:  _number, id, delta, x_coord, y_coord_.
 - cvs with the adjacency matrix must be in the form of a matrix with all the pairwise distances between nodes
 
@@ -43,16 +63,8 @@ problem.display_results(show_instructions=True)
 ```
 
 ### Running tests
-The `Executables` folder contains a small set of example workflows. 
-The `Tests` folder contains all the test that were used to measure and compare different performance indicators
-- `change_nbh`
-- `check_number_vehicles`: Check the optimal number of vehicles to rebalance a given station using an interpolation algorithm
-- `collect_stats_vns`
-- `collect_stats_lns`
-- `LNS_test`
-- `test_nbhs_stats`
-- `test_parallel_vs_lns`
-- `test_machine_performance`
+The `Executables` folder contains a small set of example workflows as well as a set of tests with different arguments
+The `Tests` folder contains the code for running the test that were used to measure and compare different performance indicators
 
 
 ## Mathematical Model

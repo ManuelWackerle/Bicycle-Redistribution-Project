@@ -1,12 +1,13 @@
 from loaders import load_from_pickle
 from loaders import get_instances_names
-import time
 from structure import ProblemInstance, Vehicle
-from copy import deepcopy
-import os
-import solvers as vns
 from matplotlib import pyplot as plt
+from copy import deepcopy
 import operators as ops
+import solvers as vns
+import time
+import os
+
 
 FOLDER_NAME = '../benchmarks_results'
 os.makedirs(FOLDER_NAME, exist_ok=True)
@@ -25,7 +26,7 @@ for instance_name in instances_names:
         'centeredness': 5,
         'number_of_vehicles': vehicle_number,
         'vehicle_capacity': vehicle_capacity,
-        'ordered_nbhs': [ops.inter_two_opt, ops.intra_two_opt, ops.intra_segment_swap, ops.destroy_local],
+        'ordered_nbhs': [ops.inter_two_opt, ops.intra_two_opt, ops.intra_segment_swap, ops.inter_segment_swap],
         'ordered_large_nbhs': [1, 3, 5, 8, 10],
         'local_timeout': 2 * 60,  # second
         'large_timeout': 60 * 60,  # second
@@ -77,7 +78,7 @@ for instance_name in instances_names:
         vns.large_nbh_search(problem_copy, ordered_large_nbhs, ordered_nbhs, change_local_nbh=vns.change_nbh_sequential,
                              change_large_nbh=vns.change_nbh_pipe,
                              large_nbh_operator=ops.multi_remove_and_insert_station,
-                             timeout=kwargs["local_timeout"], arge_timeout=kwargs["large_timeout"],
+                             timeout=kwargs["local_timeout"], large_timeout=kwargs["large_timeout"],
                              local_verbose=kwargs["local_verbose"],large_verbose=kwargs["large_verbose"])
 
     print('LNS multi:', time_hist_lns_multi)
@@ -96,7 +97,7 @@ for instance_name in instances_names:
     problem_copy = deepcopy(problem)
     distance_hist, time_hist, operation_hist = vns.general_variable_nbh_search(problem_copy,
                                                                                ordered_nbhs,
-                                                                               change_nbh=vns.change_nbh_sequential,
+                                                                               change_nbh=vns.change_nbh_cyclic,
                                                                                verbose=kwargs["local_verbose"],
                                                                                timeout=kwargs["local_timeout"]
                                                                                )
