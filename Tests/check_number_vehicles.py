@@ -2,56 +2,19 @@
 Check the optimal number of vehicles to rebalance a given station using an interpolation algorithm
 """
 import solvers
-import time
+from tqdm import tqdm
 from structure import ProblemInstance, Vehicle
 from scipy import optimize, interpolate
 from numpy import argmin
 import matplotlib.pyplot as plt
+from loaders import load_subset_from_ordered_nodes
+import operators as op
 
 
-def test_vehicles(num_vehicles: []):
-    assert len(num_vehicles) != 0, "Can't have zero vehicles"
-    assert all(n > 0 for n in num_vehicles), "Negative vehicles? Really?"
-    assert all(isinstance(n, int) for n in num_vehicles), "Non-integer vehicles seems like a bad idea..."
-
-
-def bare_general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=solvers.change_nbh_sequential,
-                                     timeout=10, skew_param=10, verbose=0):
-    """
-    General VNS with VND
-    :param problem_instance: current array of routes for all vehicles
-    :param ordered_nbhs: list of ordered neighbourhood operators
-    :param change_nbh: What type of neighbourhood change we consider
-    :param timeout: maximum execution time
-    :param skew_param: see change_nbh_skewed_sequential
-    :param verbose: control prints. 1 to print 0 to not print
-    :return: best route found.
-    """
-
-    start_time = time.time()
-    nbh_index = 0
-
-    while nbh_index < len(ordered_nbhs) and time.time() < start_time + timeout:
-        new_vehicle_routes = ordered_nbhs[nbh_index](problem_instance)
-        solvers.calculate_loading_mf(problem_instance)
-        problem_instance.display_results(False) if verbose == 1 else None
-
-        # new_routes = [None]*len(new_vehicle_routes)
-        # for vehicle_index, vehicle in enumerate(new_vehicle_routes):
-        #     new_routes[vehicle_index] = vehicle.route()
-
-        # sequential_variable_nbh_descent(problem_instance, ordered_nbhs)
-        if change_nbh == vns.change_nbh_cyclic:
-            distances_old = problem_instance.calculate_distances()
-            nbh_index = vns.change_nbh_cyclic(problem_instance, new_vehicle_routes, nbh_index, len(ordered_nbhs), verbose)
-            if distances_old == problem_instance.calculate_distances():
-                break
-
-        elif change_nbh == solvers.change_nbh_skewed_sequential:
-            nbh_index = solvers.change_nbh_skewed_sequential(problem_instance, new_vehicle_routes, nbh_index, skew_param,
-                                                             verbose)
-        else:
-            nbh_index = change_nbh(problem_instance, new_vehicle_routes, nbh_index, verbose)
+def validate_vehicles(array_num_vehicles: list):
+    assert len(array_num_vehicles) != 0, "Can't have zero vehicles"
+    assert all(n > 0 for n in array_num_vehicles), "Can't have a negative number of vehicles"
+    assert all(isinstance(n, int) for n in array_num_vehicles), "Non-integer vehicles seems like a bad idea..."
 
 
 def run_vns_different_vehicles(problem: ProblemInstance, num_vehicles_array: [int], ordered_nbhs: [], timeout=50):
@@ -59,10 +22,18 @@ def run_vns_different_vehicles(problem: ProblemInstance, num_vehicles_array: [in
     Given an array of number of vehicles, compute the distances using VNS and return
     :param problem: Instance on which to test
     :param num_vehicles_array: list of number of vehicles to try
-    :param timeout: tima allowed in VNS
+    :param timeout: time allowed in VNS
+    :param ordered_nbhs: Ordered list of neighbourhood operators.
     """
+
+    # Validate input array of numbers of vehicles
+    validate_vehicles(num_vehicles_array)
+
     distances = {}
-    for index in range(len(num_vehicles_array)):
+    pbar = tqdm(range(len(num_vehicles_array)))
+    pbar.set_description("Number of vehicles evaluated")
+
+    for index in pbar:
         # Add vehicles
         current_vehicles = []
         for index_vehicles in range(num_vehicles_array[index]):
@@ -71,8 +42,8 @@ def run_vns_different_vehicles(problem: ProblemInstance, num_vehicles_array: [in
         problem.vehicles = current_vehicles
 
         # Compute distance
-        vns.greedy_routing(problem)
-        bare_general_variable_nbh_search(problem, ordered_nbhs, timeout=timeout)
+        solvers.greedy_routing(problem)
+        solvers.general_variable_nbh_search(problem, ordered_nbhs)
         distances[len(problem.vehicles)] = problem.calculate_distances()
 
     return distances
@@ -100,7 +71,7 @@ def minimize_interpolate_distances(distances):
 
 
 def check_optimal_number_vehicles(problem: ProblemInstance, num_vehicles: [int], ordered_nbhs, plot=False):
-    test_vehicles(num_vehicles)
+
     distances = run_vns_different_vehicles(problem, num_vehicles, ordered_nbhs)
     vehicles = [int(num_str) for num_str in distances.keys()]
     dists = [int(num_str) / 1000 for num_str in distances.values()]
@@ -115,3 +86,19 @@ def check_optimal_number_vehicles(problem: ProblemInstance, num_vehicles: [int],
     optimum_num_vehicles = minimize_interpolate_distances(distances)
 
     return optimum_num_vehicles
+
+
+if __name__ == '__main__':
+
+    # Generate graph (randomly with a certain number of nodes)
+    graph, node_info = load_subset_from_ordered_nodes(nodes=50, centeredness=5)
+
+    # Mount problem instance with and without zero demand nodes
+    problem = ProblemInstance(input_graph=graph, vehicles=[], node_data=node_info, verbose=0)
+
+    # Define the list of neighbourhood operators
+    ordered_nbhs = [op.inter_segment_swap, op.intra_two_opt, op.intra_segment_swap, op.inter_two_opt, ]
+
+    # Compute the minimum number of vehicles and plot.
+    argmin_vehicles = check_optimal_number_vehicles(problem, range(1, 50), ordered_nbhs, True)
+    print("Number of vehicles that minimize the distance: ", argmin_vehicles)
