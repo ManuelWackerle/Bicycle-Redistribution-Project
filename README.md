@@ -10,11 +10,14 @@ Case Studies, Project 3. Bicycle Redistribution Project
 - `solvers` contains methods use for producing initial solutions as well as for the VNS and LNS.
 - `operators` is a collection of permutation operators used in the VNS to search neighbourhoods in the solution space.
 - `utils` contains auxiliary methods used throughout the project such as plotters.
+- 
 #### Folders
-- `Executables` all the executable files including tests
-- `Saved` all the saved output of plots, tests and statistics
-- `MVG Code` the code for processing the MVG data 
-- `Problem Instances` a collection of csv and pickle data from different data sets
+- `Executables` has all the executable files including tests.
+- `Saved` contains all the saved output of plots, tests and statistics.
+- `MVG Code` has the code for processing the MVG data.
+- `Problem Instances` is a collection of csv and pickle data from different data sets.
+- `Tests` contains all the code for running tests and collecting performance statistics.
+- 
 #### Dependencies
 | Package      | Version   |
 |--------------|-----------|
