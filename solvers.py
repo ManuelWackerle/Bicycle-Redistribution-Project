@@ -313,7 +313,7 @@ def large_nbh_search(problem_instance, ordered_large_nbhs: [int], ordered_local_
     while large_nbh_index < len(ordered_large_nbhs) and time.time() < start_time + large_timeout:
         if first_time is False:
             # time_shake.append(time.time() - start_time)
-            time_shake.append(time.time())
+            time_shake.append(time.time()-start_time)
             new_vehicle_routes = large_nbh_operator(problem_instance, ordered_large_nbhs[large_nbh_index])
             shake_effect.append(new_vehicle_routes == problem_instance.get_all_routes())
         else:
@@ -365,10 +365,7 @@ def large_nbh_search(problem_instance, ordered_large_nbhs: [int], ordered_local_
                       "to remove", ordered_large_nbhs[large_nbh_index], "stations")
 
         distance_hist = distance_hist + distance_hist_local
-        # time_hist = time_hist + [element + time_hist[-1] for element in time_hist_local]
-        time_hist = time_hist + time_hist_local
+        time_hist = time_hist + [element + time_shake[-1] for element in time_hist_local] if len(time_shake) != 0 else time_hist_local
         operation_hist = operation_hist + operation_hist_local
-    time_hist = [element - start_time for element in time_hist]
-    time_shake = [element - start_time for element in time_shake]
 
     return distance_hist, time_hist, operation_hist, time_shake, shake_effect
