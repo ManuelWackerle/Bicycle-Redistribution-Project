@@ -1,16 +1,17 @@
-# import sys
-# sys.path.append("/Users/hajime/workspace/tum/CaseStudies/Bicycle-Redistribution-Project/")
+"""
+This is a test for checking machine performance.
+This test shows the compute time average and standard diviation of greedy and vns.
+"""
 
 import os
 import time
 import csv
 from tqdm import tqdm
-from loaders import load_subset_from_ordered_nodes
 
 import solvers
 import operators as ops
-from structure import ProblemInstance, Vehicle
-import numpy as np
+
+from test_base import TestLNS
 
 
 kwargs = {
@@ -25,56 +26,50 @@ kwargs = {
     'distance_limit': 200000,  # metre
     'local_timeout': 2*60,  # second
     'local_verbose': 0,
+    'change_local_nbh': solvers.change_nbh_sequential,
+    'root': os.path.join(os.getcwd(), 'results'),
+    'read_only': False,
+    'filename': 'test_machine_performance.csv',
+    'num_try': 2,
 }
 
-PATH = os.path.join(os.getcwd(), os.pardir, 'Saved', 'results')
+class TestMachinePerformance(TestLNS):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
 
-def _get_problem_instance():
-    graph, node_info = load_subset_from_ordered_nodes(nodes=kwargs['nodes'], centeredness=kwargs["centeredness"], randomness=False)
-    vehicles = [Vehicle(capacity=kwargs['vehicle_capacity'], vehicle_id=str(i), distance_limit=kwargs["distance_limit"])
-                for i in range(kwargs['number_of_vehicles'])]
+    def solver(self, problem):
+        solvers.greedy_routing(problem, randomness=False)
+        self.run_vns(problem)
 
-    problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)
-    return problem
+    def write_results_to_csv(self, filename, header, num_try):
+        writer = csv.writer(open(os.path.join(self.root, filename), "w", newline=''))
+        results = []
+        for _ in tqdm(range(num_try)):
+            problem = self.get_problem_instance()
+            st = time.time()
+            self.solver(problem)
+            results.append(time.time()-st)
+        writer.writerow(results)
+        return results
+    
+    def read_results_from_csv(self, filename):
+        with open(os.path.join(self.root, filename), 'r') as f:
+            reader = csv.reader(f)
+            results = next(reader)
+        return None, results
 
-def run_vns(problem):
-    solvers.general_variable_nbh_search(
-        problem, kwargs['ordered_nbhs'], change_nbh=solvers.change_nbh_sequential,
-        verbose=kwargs["local_verbose"], timeout=kwargs["local_timeout"])
-    return problem
-
-def run_greedy_vns(problem):
-    solvers.greedy_routing(problem, randomness=False)
-    run_vns(problem)
-    return problem
-
-def write_results_to_csv(file_name, num_try=100):
-    writer = csv.writer(open(os.path.join(PATH, file_name), "w", newline=''))
-    results = []
-    for _ in tqdm(range(num_try)):
-        problem = _get_problem_instance()
-        st = time.time()
-        _ = run_greedy_vns(problem)
-        results.append(time.time()-st)
-    writer.writerow(results)
-    return results
-
-def read_results_from_csv(file_name):
-    with open(os.path.join(PATH, file_name), 'r') as f:
-        reader = csv.reader(f, quoting=csv.QUOTE_NONNUMERIC)
-        return next(reader)
-
-def get_stats(results):
-    np_results = np.array(results)
-    np_mean = np.round(np.mean(np_results), decimals=2)
-    np_std = np.round(np.std(np_results), decimals=2)
-    return np_mean.tolist(), np_std.tolist()
 
 def main():
-    filename = 'test_machine_performance.csv'
-    results = write_results_to_csv(filename, num_try=100)
-    # results = read_results_from_csv(filename)
-    mean, std = get_stats(results)
+    test_instance = TestMachinePerformance(kwargs=kwargs)
+    if kwargs.get('read_only'):
+        results = test_instance.read_results_from_csv(kwargs.get('filename', 'test_machine_performance.csv'))
+    else:
+        results = test_instance.write_results_to_csv(
+            filename=kwargs.get('filename', 'test_machine_performance.csv'),
+            header=[],
+            num_try=kwargs.get('num_try', 100),
+        )
+    mean, std = test_instance.get_stats(results)
     print('{:>12}[s] {:>12}[s]'.format('mean', 'std'))
     print('{:>12}[s] {:>12}[s]'.format(mean, std))
 

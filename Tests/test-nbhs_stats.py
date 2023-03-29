@@ -1,12 +1,14 @@
-import sys
-sys.path.append("/Users/hajime/workspace/tum/CaseStudies/Bicycle-Redistribution-Project/")
+"""
+This is a test for comparing vns operators.
+This test shows plots of distance improvements and time for each operators.
+Change kwargs to try different parameters.
+"""
 
 import os
 import time
 import csv
-from loaders import load_graph, load_subset_from_ordered_nodes, load_from_pickle
+from loaders import load_subset_from_ordered_nodes
 
-from copy import deepcopy
 import solvers
 import operators as ops
 from structure import ProblemInstance, Vehicle
@@ -23,21 +25,19 @@ kwargs = {
                      ops.inter_two_opt,
                      ops.inter_segment_swap,
                      ops.multi_remove_and_insert_station,
-                     ops.multi_remove_and_insert_station_v2,
                      ops.destroy_local],
     'nbhs_names': ['intra_two_opt',
                    'intra_seg_swap',
                    'inter_two_opt',
                    'inter_seg_swap',
                    'rem_ins_1',
-                   'rem_ins_5',
                    'destroy_local'],
     'distance_limit': 200000,  # meter
-    'num_try': 500,
+    'num_try': 2,
     'patience': 5,
     'from_csv': True,
-    'time_file_name': "nbhs_time_stats_p5.csv",
-    'dist_file_name': "nbhs_dist_stats_p5.csv",
+    'time_file_name': "nbhs_time_stats_2.csv",
+    'dist_file_name': "nbhs_dist_stats_2.csv",
 }
 
 PATH = os.path.join(os.getcwd(), 'results')
@@ -76,7 +76,7 @@ def _get_operations_results(operations, patience=0):
     for operation in operations:
         # It should have the same problem_instance and greedyt
         problem_instance = _get_problem_instance()
-        vns.greedy_routing(problem_instance)
+        solvers.greedy_routing(problem_instance)
         time_taken, dist_improvement = _get_operation_results(problem_instance, operation, patience)
         times.append(time_taken)
         dists.append(dist_improvement)
@@ -118,17 +118,19 @@ def show_stats(operation_names, hist, title, ylabel):
     operation_names = np.array(operation_names)[:-2]
     np_mean = np.mean(np_hist, axis=0)
     np_std = np.std(np_hist, axis=0)
+    print('{:>15} {:>12} {:>12} {:>12} {:>12}'.format(ylabel, operation_names[0], operation_names[1], operation_names[2], operation_names[3]))
+    print('{:>15} {:>12.2f} {:>12.2f} {:>12.2f} {:>12.2f}'.format('Mean', np_mean[0], np_mean[1], np_mean[2], np_mean[3]))
+    print('{:>15} {:>12.2f} {:>12.2f} {:>12.2f} {:>12.2f}'.format('Std', np_std[0], np_std[1], np_std[2], np_std[3]))
     plt.title(title)
     plt.ylabel(ylabel)
-    # plt.errorbar(operation_names, np_mean, np_std, linestyle='None', marker='^')
     plt.bar(operation_names, np_mean, alpha=0.8, color=colors[:len(operation_names)], yerr=np_std)
     plt.show()
 
 
 def main():
     if kwargs['from_csv']:
-        time_hist = read_results_from_csv('nbhs_time_stats_p5.csv')
-        dist_hist = read_results_from_csv('nbhs_dist_stats_p5.csv')
+        time_hist = read_results_from_csv(kwargs['time_file_name'])
+        dist_hist = read_results_from_csv(kwargs['dist_file_name'])
     else:
         time_hist, dist_hist = write_results_to_csv(
             kwargs['ordered_nbhs'],
