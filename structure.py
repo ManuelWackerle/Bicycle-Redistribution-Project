@@ -368,6 +368,34 @@ class ProblemInstance:
             if demand == 0:
                 self.model.remove_node(node)
 
+    def _validate_edges(self, edges: nx.classes.reportviews.OutEdgeView):
+        """
+        Check that a provided list of edges is subset of the edges in the graph.
+        """
+        assert all(edge in self.model.edges for edge in edges)
+
+    def add_noise(
+            self,
+            edges: nx.classes.reportviews.OutEdgeView = None,
+            edge_atr: str = 'dist', distr=np.random.normal, distr_kwargs={'loc': 0, 'scale': 1}):
+        """
+        Adds noise to the cost matrix of the problem instance in specified edges
+        :param edges: Set of NetworkX edges to add noise to
+        :param edge_atr: name of the edge attribute to add noise to
+        :param distr: Distribution from which to sample the noise
+        :param distr_kwargs: Keyword arguments for the specified distribution
+        :param random_state: Pass a specific value to ensure reproductibility of experiment
+        """
+
+        if edges is None:
+            edges = self.model.edges()
+        else:
+            self._validate_edges(edges)
+
+        noise = distr(**distr_kwargs, size=len(edges))
+        for num, edge in enumerate(edges):
+            self.model[edge[0]][edge[1]][edge_atr] = self.model[edge[0]][edge[1]][edge_atr] + noise[num]
+
     def reset(self):
         for v in self.vehicles:
             v.reset()
