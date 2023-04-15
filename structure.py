@@ -394,7 +394,8 @@ class ProblemInstance:
 
         noise = distr(**distr_kwargs, size=len(edges))
         for num, edge in enumerate(edges):
-            self.model[edge[0]][edge[1]][edge_atr] = self.model[edge[0]][edge[1]][edge_atr] + noise[num]
+            noisy_distance = self.model[edge[0]][edge[1]][edge_atr] + noise[num]
+            self.model[edge[0]][edge[1]][edge_atr] = noisy_distance if noisy_distance > 0 else self.model[edge[0]][edge[1]][edge_atr]
 
     def reset(self):
         for v in self.vehicles:
