@@ -16,11 +16,13 @@ from matplotlib import pyplot as plt
 
 class TestBase(object):
     def __init__(self, *args, **kwargs) -> None:
-        self.nodes = kwargs.get('nodes', 250)
+        self.nodes = kwargs.get('nodes', 50)
         self.centeredness = kwargs.get('centeredness', 5)
         self.number_of_vehicles = kwargs.get('number_of_vehicles', 5)
         self.vehicle_capacity = kwargs.get('vehicle_capacity', 20)
         self.distance_limit = kwargs.get('distance_limit', 200000)
+        self.time_station = kwargs.get('time_station', 0)
+        self.time_load = kwargs.get('time_load', 0)
         self.randomness = kwargs.get('randomness', True)
         self.root = kwargs.get('root', os.path.join(os.getcwd(), 'results'))
 
@@ -28,7 +30,7 @@ class TestBase(object):
         graph, node_info = load_subset_from_ordered_nodes(nodes=self.nodes, centeredness=self.centeredness, randomness=self.randomness)
         vehicles = [Vehicle(capacity=self.vehicle_capacity, vehicle_id=str(i), distance_limit=self.distance_limit)
                     for i in range(self.number_of_vehicles)]
-        problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)
+        problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0, time_station=self.time_station, time_load=self.time_load)
         return problem
 
     def write_results_to_csv(self, filename, header, num_try):
@@ -90,6 +92,10 @@ class TestLNS(TestBase):
         self.large_timeout = kwargs.get('large_timeout', 6*60)
         self.local_verbose = kwargs.get('local_verbose', 0)
         self.large_verbose = kwargs.get('large_verbose', 0)
+
+    def run_greedy(self, problem):
+        solvers.greedy_routing(problem)
+        return problem
 
     def run_vns(self, problem):
         solvers.general_variable_nbh_search(

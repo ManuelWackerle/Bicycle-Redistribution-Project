@@ -277,6 +277,74 @@ def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=c
     return distance_hist, time_hist, operation_hist if plot else None
 
 
+def change_nbh_cyclic_time(problem, modified_vehicles, nbh, nbh_last_success, ordered_nbhs, verbose) -> int:
+    """
+        Proceed in a cyclic fashion through neighbourhoods and repeat until no improvement.
+        keep cycling through all operators until none of them provide an improvement. 
+        [1,2,3,4, 1,2,3,4, 1,2,3,4... ]
+    """
+    if problem.calculate_delivery_times() > problem.calculate_delivery_times(modified_vehicles):
+        # print("Changing from neighbourhood ", nbh, "to neighbourhood ", nbh + 1) if verbose == 1 else None
+        problem.vehicles = modified_vehicles
+        nbh_last_success[0] = nbh
+
+    nbh = (nbh + 1) % len(ordered_nbhs)
+    if nbh == nbh_last_success[0]:
+        nbh = len(ordered_nbhs)
+
+    return nbh
+
+
+def time_model_vns(problem_instance, ordered_nbhs: [], change_nbh=change_nbh_cyclic_time,
+                   timeout=10, plot=True, verbose=0):
+    """
+        General VNS with VND
+        :param problem_instance: current array of routes for all vehicles
+        :param ordered_nbhs: list of ordered neighbourhood operators
+        :param change_nbh: What type of neighbourhood change we consider
+        :param timeout: maximum execution time
+        :param plot: plots the improvement graph for the operators at each iteration
+        :param verbose: control prints. 1 to print 0 to not print
+        :return: best route found.
+    """
+
+    start_time = time.time()
+    nbh_index = 0 if change_nbh != change_nbh_check_all else -1
+    nbh_last_success = [0]
+    distance_hist = []
+    time_hist = []
+    operation_hist = []
+
+    distance_hist.append(problem_instance.calculate_delivery_times())
+    time_start = time.time()
+    time_hist.append(0)
+    operation_hist.append(0)
+
+    while nbh_index < len(ordered_nbhs) and time.time() < start_time + timeout:
+
+        problem_instance.calculate_loading_mf()
+        problem_instance.remove_unused_stops()
+
+        if verbose == 1:
+            name = "all" if nbh_index == -1 else ordered_nbhs[nbh_index].__name__
+            print("Searching nbh: ", name)
+            print('(before)  ', end='')
+            problem_instance.display_results(False)
+
+        new_vehicle_routes = ordered_nbhs[nbh_index](problem_instance)
+        nbh_index = change_nbh(problem_instance, new_vehicle_routes, nbh_index, nbh_last_success, ordered_nbhs, verbose)
+
+        if verbose == 1:
+            print('(after)   ', end='')
+            problem_instance.display_results(False)
+        if plot:
+            distance_hist.append(problem_instance.calculate_delivery_times())
+            time_hist.append(time.time() - time_start)
+            operation_hist.append(nbh_index)
+
+    return distance_hist, time_hist, operation_hist if plot else None
+
+
 def large_nbh_search(problem_instance, ordered_large_nbhs: [int], ordered_local_nbhs: [],
                      change_large_nbh=change_nbh_pipe,
                      change_local_nbh=change_nbh_sequential,

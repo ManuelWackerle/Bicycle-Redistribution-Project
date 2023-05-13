@@ -81,7 +81,7 @@ class ProblemInstance:
     """
     ProblemInstance: contains map (graph information) and operating vehicles
     """
-    def __init__(self, input_graph: nx.Graph, vehicles: [], node_data=None, depot='0', verbose=0):
+    def __init__(self, input_graph: nx.Graph, vehicles: [], node_data=None, depot='0', verbose=0, time_station=0, time_load=0):
         """
             :param input_graph: the model/graph of possible bike locations.
             :param vehicles: array of vehicles
@@ -95,6 +95,8 @@ class ProblemInstance:
         self.node_data = node_data
         self.vehicles = vehicles
         self.depot = depot
+        self.time_station = time_station
+        self.time_load = time_load
 
         # tracking variables
         self.total_source = 0
@@ -174,6 +176,39 @@ class ProblemInstance:
         for s in range(1, len(vehicle.route())):
             dist += self.distance(prev, vehicle.route()[s])
             prev = vehicle.route()[s]
+        vehicle.update_distance(dist)
+        return dist
+
+    def calculate_delivery_times(self, vehicles=None, time_station=None, time_load=None):
+        """
+            Given a set of vehicles with corresponding routes, calculate the total distance travelled
+            :param vehicles: array of vehicle objects
+            :return total: the total distance travelled in metres
+        """
+        total = 0
+        if vehicles is None:
+            vehicles = self.vehicles
+        if time_station is None:
+            time_station = self.time_station
+        if time_load is None:
+            time_load = self.time_load
+        for v in vehicles:
+            total += self.calculate_delivery_time(v, time_station, time_load)
+        self.average_distance = total/len(vehicles)
+        return total
+
+    def calculate_delivery_time(self, vehicle, time_station=0, time_load=0):
+        """
+            Given a single vehicles with a corresponding route, calculate the distance travelled by the vehicle
+            :param vehicle: an object of class Vehicle
+            :return dist: the distance travelled in metres
+        """
+        dist = 0
+        prev = vehicle.route()[0]
+        for s in range(1, len(vehicle.route())):
+            dist += self.distance(prev, vehicle.route()[s]) + time_station
+            prev = vehicle.route()[s]
+        dist += sum([abs(x) for x in vehicle.loads()]) * time_load
         vehicle.update_distance(dist)
         return dist
 
