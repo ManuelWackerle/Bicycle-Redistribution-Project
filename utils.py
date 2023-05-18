@@ -9,6 +9,9 @@ import os
 import datetime
 import time
 import os.path
+from copy import deepcopy
+from operator import itemgetter
+import itertools
 
 
 rc('font', **{'family': 'lmodern', 'serif': ['Latin  Modern'], 'size': 22})
@@ -191,3 +194,98 @@ def show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbh
     fig.savefig(folder + '/improvement_gr_' + now.strftime("%d-%m-%y_%H-%M-%S"))
     time.sleep(1)
     plt.show()
+
+
+def update_problem_with_window(graph, delta=0):
+    """apply window and remove node within the window while keeping total imbalance
+    """
+    removal_sup_nodes = []
+    removal_sup_total = []
+    removal_dem_nodes = []
+    removal_dem_total = []
+    removal_nodes = []
+    for node in graph.nodes:
+        if node == '0':
+            # deep depot
+            continue
+        elif abs(graph.nodes[node]['sup']) <= delta:
+            if graph.nodes[node]['sup'] > 0:
+                removal_sup_nodes.append(node)
+                removal_sup_total.append(graph.nodes[node]['sup'])
+            elif graph.nodes[node]['sup'] < 0:
+                removal_dem_nodes.append(node)
+                removal_dem_total.append(graph.nodes[node]['sup'])
+            else:
+                removal_nodes.append(node)
+        elif graph.nodes[node]['sup'] > delta:
+            graph.nodes[node]['sup'] -= delta
+        else:
+            graph.nodes[node]['sup'] += delta
+    diff = sum(removal_sup_total) + sum(removal_dem_total)
+    if diff > 0:
+        try:
+            i = removal_dem_total.index(diff)
+            removal_sup_nodes.pop(i)
+            removal_sup_total.pop(i)
+        except ValueError:
+            N = len(removal_sup_nodes)
+            find = False
+            for c in reversed(range(2, N+1)):
+                for subset_idxes in itertools.combinations(list(range(N)), c):
+                    if diff == sum(itemgetter(*subset_idxes)(removal_sup_total)):
+                        find = True
+                        removal_sup_nodes = [x for i, x in enumerate(removal_sup_nodes) if i not in subset_idxes]
+                        removal_sup_total = [x for i, x in enumerate(removal_sup_total) if i not in subset_idxes]
+                        break
+                if find:
+                    break
+            if not find:
+                print("could not find fully balanced")
+                return graph
+    elif diff < 0:
+        try:
+            i = removal_dem_total.index(diff)
+            removal_sup_nodes.pop(i)
+            removal_sup_total.pop(i)
+        except ValueError:
+            N = len(removal_dem_nodes)
+            find = False
+            for c in reversed(range(2, N+1)):
+                for subset_idxes in itertools.combinations(list(range(N)), c):
+                    if diff == sum(itemgetter(*subset_idxes)(removal_dem_total)):
+                        find = True
+                        removal_dem_nodes = [x for i, x in enumerate(removal_dem_nodes) if i not in subset_idxes]
+                        removal_dem_total = [x for i, x in enumerate(removal_dem_total) if i not in subset_idxes]
+                        break
+                if find:
+                    break
+            if not find:
+                print("could not find fully balanced")
+                return graph
+
+    removal_nodes += removal_sup_nodes
+    removal_nodes += removal_dem_nodes
+    graph.remove_nodes_from(removal_nodes)
+
+    return graph
+
+
+def get_graph_after_rebalance(problem):
+    """get original graph, apply loading and get graph after rebalance
+    """
+    graph = problem.model
+    vehicles = problem.vehicles
+    auxiliary_graph = deepcopy(graph)
+    for vehicle in vehicles:
+        prev = 0
+        for curr in range(1, len(vehicle.route())-1):
+            auxiliary_graph.nodes[vehicle.route()[curr]]['sup'] -= vehicle.loads()[curr] - vehicle.loads()[prev]
+            prev = curr
+    return auxiliary_graph
+
+
+def get_total_imbalance_from_aux_graph(aux_graph):
+    total = 0
+    for node in aux_graph.nodes:
+        total += abs(aux_graph.nodes[node]['sup'])
+    return total
