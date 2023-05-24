@@ -8,6 +8,8 @@ import time
 import csv
 from tqdm import tqdm
 from copy import deepcopy
+import sys
+sys.path.append(os.getcwd())
 
 import solvers
 from structure import Vehicle, ProblemInstance
@@ -15,11 +17,11 @@ import operators as ops
 from loaders import load_subset_from_ordered_nodes
 
 from tests.test_base import TestLNS
-from utils import update_problem_with_window, get_graph_after_rebalance, get_total_imbalance_from_aux_graph
+from utils import update_problem_with_all_window, update_problem_with_partial_window, get_graph_after_rebalance, get_total_imbalance_from_aux_graph
 
 
 KWARGS = {
-    'nodes': 50,
+    'nodes': 100,
     'centeredness': 5,
     'number_of_vehicles': 5,
     'vehicle_capacity': 20,
@@ -34,8 +36,8 @@ KWARGS = {
     'root': os.path.join(os.getcwd(), 'results'),
     'read_only': False,
     'filename': 'test_window_model.csv',
-    'num_try': 10,
-    'max_window': 5,
+    'num_try': 100,
+    'max_window': 10,
 }
 
 class TestWindowModel(TestLNS):
@@ -43,20 +45,23 @@ class TestWindowModel(TestLNS):
         super().__init__(*args, **kwargs)
         self.max_window = kwargs['max_window']
 
-    def get_problem_instance(self, delta=0):
-        graph, node_info = load_subset_from_ordered_nodes(nodes=self.nodes, centeredness=self.centeredness, randomness=self.randomness)
-        window_graph = update_problem_with_window(graph, delta)
+    def get_problem_instance(self, graph, node_info, delta=0):
         vehicles = [Vehicle(capacity=self.vehicle_capacity, vehicle_id=str(i), distance_limit=self.distance_limit)
                     for i in range(self.number_of_vehicles)]
-        problem = ProblemInstance(input_graph=window_graph, vehicles=vehicles, node_data=node_info, verbose=0)
+        problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)
         return problem
 
-    def solver(self, problem):
-        solvers.greedy_routing(problem, randomness=False)
-        self.run_vns(problem)
-        aux_graph = get_graph_after_rebalance(problem)
+    def solver(self, original_problem, window_problem):
+        solvers.greedy_routing(window_problem, randomness=False)
+        self.run_vns(window_problem)
+        original_problem.vehicles = window_problem.vehicles
+        original_problem.calculate_loading_mf()
+        dist = original_problem.calculate_distances()
+        total_bikes = get_total_imbalance_from_aux_graph(original_problem.model)
+        aux_graph = get_graph_after_rebalance(original_problem)
         imbalance = get_total_imbalance_from_aux_graph(aux_graph)
-        return problem.calculate_distances(), imbalance
+        efficiency = (total_bikes - imbalance) / dist * 1000
+        return dist, imbalance, efficiency
 
     def write_results_to_csv(self, filename, header, num_try):
         writer = csv.writer(open(os.path.join(self.root, filename), "w", newline=''))
@@ -64,11 +69,19 @@ class TestWindowModel(TestLNS):
         results = []
         for _ in tqdm(range(num_try)):
             result = []
+            original_graph, node_info = load_subset_from_ordered_nodes(nodes=self.nodes, centeredness=self.centeredness, randomness=self.randomness)
+            original_problem = self.get_problem_instance(original_graph, node_info)
             for delta in range(self.max_window):
-                problem = self.get_problem_instance(delta)
-                dist, imbalance = self.solver(problem)
+                find, window_graph = update_problem_with_all_window(deepcopy(original_graph), delta)
+                if not find:
+                    break
+                window_problem = self.get_problem_instance(window_graph, node_info)
+                dist, imbalance, efficiency = self.solver(original_problem, window_problem)
                 result.append(dist)
                 result.append(imbalance)
+                result.append(efficiency)
+            if not find:
+                continue
             writer.writerow(result)
             results.append(result)
         return results
@@ -81,7 +94,7 @@ def main():
     else:
         header=[x 
                 for delta in range(KWARGS['max_window'])
-                for x in [f'Window={delta}', f'Window={delta}']]
+                for x in [f'Window={delta}', f'Window={delta}', f'Window={delta}']]
         results = test_instance.write_results_to_csv(
             filename=KWARGS.get('filename', 'test_window_model.csv'),
             header=header,
@@ -89,13 +102,17 @@ def main():
         )
     mean, std = test_instance.get_stats(results)
 
-    print(''.join(['{:>10}'.format('Dist')] + ['{:>15}'.format(x) for i, x in enumerate(header) if i%2 == 0]))
-    print(''.join(['{:>10}'.format('Mean')] + ['{:>15.2f}'.format(float(x)) for i, x in enumerate(mean) if i%2 == 0]))
-    print(''.join(['{:>10}'.format('Std')] + ['{:>15.2f}'.format(float(x)) for i, x in enumerate(std) if i%2 == 0]))
+    print(''.join(['{:>10}'.format('Dist')] + ['{:>15}'.format(x) for i, x in enumerate(header) if i%3 == 0]))
+    print(''.join(['{:>10}'.format('Mean')] + ['{:>15.2f}'.format(float(x)) for i, x in enumerate(mean) if i%3 == 0]))
+    print(''.join(['{:>10}'.format('Std')] + ['{:>15.2f}'.format(float(x)) for i, x in enumerate(std) if i%3 == 0]))
 
-    print(''.join(['{:>10}'.format('Imbalance')] + ['{:>15}'.format(x) for i, x in enumerate(header) if i%2 == 1]))
-    print(''.join(['{:>10}'.format('Mean')] + ['{:>15.2f}'.format(float(x)) for i, x in enumerate(mean) if i%2 == 1]))
-    print(''.join(['{:>10}'.format('Std')] + ['{:>15.2f}'.format(float(x)) for i, x in enumerate(std) if i%2 == 1]))
+    print(''.join(['{:>10}'.format('Imbalance')] + ['{:>15}'.format(x) for i, x in enumerate(header) if i%3 == 1]))
+    print(''.join(['{:>10}'.format('Mean')] + ['{:>15.2f}'.format(float(x)) for i, x in enumerate(mean) if i%3 == 1]))
+    print(''.join(['{:>10}'.format('Std')] + ['{:>15.2f}'.format(float(x)) for i, x in enumerate(std) if i%3 == 1]))
+
+    print(''.join(['{:>10}'.format('Efficiency')] + ['{:>15}'.format(x) for i, x in enumerate(header) if i%3 == 2]))
+    print(''.join(['{:>10}'.format('Mean')] + ['{:>15.2f}'.format(float(x)) for i, x in enumerate(mean) if i%3 == 2]))
+    print(''.join(['{:>10}'.format('Std')] + ['{:>15.2f}'.format(float(x)) for i, x in enumerate(std) if i%3 == 2]))
 
 if __name__ == '__main__':
     main()

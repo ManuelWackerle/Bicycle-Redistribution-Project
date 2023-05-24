@@ -196,9 +196,83 @@ def show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbh
     plt.show()
 
 
-def update_problem_with_window(graph, delta=0):
+def fix_balance_after_removal_by_combination(removal_sup_total, removal_sup_nodes, removal_dem_total, removal_dem_nodes):
+    # TODO refactor
+    find = True
+    diff = sum(removal_sup_total) + sum(removal_dem_total)
+    if diff > 0:
+        find = False
+        try:
+            i = removal_sup_total.index(diff)
+            removal_sup_nodes.pop(i)
+            removal_sup_total.pop(i)
+            find = True
+        except ValueError:
+            N = len(removal_sup_nodes)
+            for c in reversed(range(2, N+1)):
+                for subset_idxes in itertools.combinations(list(range(N)), c):
+                    if diff == sum(itemgetter(*subset_idxes)(removal_sup_total)):
+                        find = True
+                        removal_sup_nodes = [x for i, x in enumerate(removal_sup_nodes) if i not in subset_idxes]
+                        removal_sup_total = [x for i, x in enumerate(removal_sup_total) if i not in subset_idxes]
+                        break
+                if find:
+                    break
+    elif diff < 0:
+        find = False
+        try:
+            i = removal_dem_total.index(diff)
+            removal_dem_total.pop(i)
+            removal_dem_total.pop(i)
+            find = True
+        except ValueError:
+            N = len(removal_dem_nodes)
+            for c in reversed(range(2, N+1)):
+                for subset_idxes in itertools.combinations(list(range(N)), c):
+                    if diff == sum(itemgetter(*subset_idxes)(removal_dem_total)):
+                        find = True
+                        removal_dem_nodes = [x for i, x in enumerate(removal_dem_nodes) if i not in subset_idxes]
+                        removal_dem_total = [x for i, x in enumerate(removal_dem_total) if i not in subset_idxes]
+                        break
+                if find:
+                    break
+    return removal_sup_nodes, removal_dem_nodes, find
+
+
+def fix_balance_after_removal_by_reduction(removal_sup_total, removal_sup_nodes, removal_dem_total, removal_dem_nodes, graph):
+    # TODO refactor
+    removal_idxes = []
+    if sum(removal_sup_total) + sum(removal_dem_total) > 0:
+        max_dem_total = abs(sum(removal_dem_total))
+        removal_sup_total, removal_sup_nodes = zip(*sorted(zip(removal_sup_total, removal_sup_nodes)))
+        for i in range(len(removal_sup_nodes)):
+            if removal_sup_total[i] < max_dem_total:
+                max_dem_total -= removal_sup_total[i]
+                removal_idxes.append(i)
+            else:
+                graph.nodes[removal_sup_nodes[i]]['sup'] -= max_dem_total
+                break
+        removal_sup_nodes = [x for j, x in enumerate(removal_sup_nodes) if j in removal_idxes]
+        removal_sup_total = [x for j, x in enumerate(removal_sup_total) if j in removal_idxes]
+    elif sum(removal_sup_total) + sum(removal_dem_total) < 0:
+        max_sup_total = sum(removal_sup_total)
+        removal_dem_total, removal_dem_nodes = zip(*sorted(zip(removal_dem_total, removal_dem_nodes), reverse=True))
+        for i in range(len(removal_dem_nodes)):
+            if removal_dem_total[i] < max_sup_total:
+                max_sup_total -= abs(removal_dem_total[i])
+                removal_idxes.append(i)
+            else:
+                graph.nodes[removal_dem_nodes[i]]['sup'] -= max_sup_total
+                break
+        removal_dem_nodes = [x for j, x in enumerate(removal_dem_nodes) if j in removal_idxes]
+        removal_dem_total = [x for j, x in enumerate(removal_dem_total) if j in removal_idxes]
+    return removal_sup_nodes, removal_dem_nodes
+
+
+def update_problem_with_all_window(graph, delta=0):
     """apply window and remove node within the window while keeping total imbalance
     """
+    # TODO refactor
     removal_sup_nodes = []
     removal_sup_total = []
     removal_dem_nodes = []
@@ -206,7 +280,7 @@ def update_problem_with_window(graph, delta=0):
     removal_nodes = []
     for node in graph.nodes:
         if node == '0':
-            # deep depot
+            # keep depot
             continue
         elif abs(graph.nodes[node]['sup']) <= delta:
             if graph.nodes[node]['sup'] > 0:
@@ -221,57 +295,54 @@ def update_problem_with_window(graph, delta=0):
             graph.nodes[node]['sup'] -= delta
         else:
             graph.nodes[node]['sup'] += delta
-    diff = sum(removal_sup_total) + sum(removal_dem_total)
-    if diff > 0:
-        try:
-            i = removal_dem_total.index(diff)
-            removal_sup_nodes.pop(i)
-            removal_sup_total.pop(i)
-        except ValueError:
-            N = len(removal_sup_nodes)
-            find = False
-            for c in reversed(range(2, N+1)):
-                for subset_idxes in itertools.combinations(list(range(N)), c):
-                    if diff == sum(itemgetter(*subset_idxes)(removal_sup_total)):
-                        find = True
-                        removal_sup_nodes = [x for i, x in enumerate(removal_sup_nodes) if i not in subset_idxes]
-                        removal_sup_total = [x for i, x in enumerate(removal_sup_total) if i not in subset_idxes]
-                        break
-                if find:
-                    break
-            if not find:
-                print("could not find fully balanced")
-                return graph
-    elif diff < 0:
-        try:
-            i = removal_dem_total.index(diff)
-            removal_sup_nodes.pop(i)
-            removal_sup_total.pop(i)
-        except ValueError:
-            N = len(removal_dem_nodes)
-            find = False
-            for c in reversed(range(2, N+1)):
-                for subset_idxes in itertools.combinations(list(range(N)), c):
-                    if diff == sum(itemgetter(*subset_idxes)(removal_dem_total)):
-                        find = True
-                        removal_dem_nodes = [x for i, x in enumerate(removal_dem_nodes) if i not in subset_idxes]
-                        removal_dem_total = [x for i, x in enumerate(removal_dem_total) if i not in subset_idxes]
-                        break
-                if find:
-                    break
-            if not find:
-                print("could not find fully balanced")
-                return graph
+    
+    removal_sup_nodes, removal_dem_nodes = fix_balance_after_removal_by_reduction(removal_sup_total, removal_sup_nodes, removal_dem_total, removal_dem_nodes, graph)
 
     removal_nodes += removal_sup_nodes
     removal_nodes += removal_dem_nodes
     graph.remove_nodes_from(removal_nodes)
 
-    return graph
+    return True, graph
+
+
+def update_problem_with_partial_window(graph, delta=0):
+    """apply window to nodes which has supply/node within the window 
+       while keeping total imbalance
+    """
+    # TODO refactor
+    removal_sup_nodes = []
+    removal_sup_total = []
+    removal_dem_nodes = []
+    removal_dem_total = []
+    removal_nodes = []
+    for node in graph.nodes:
+        if node == '0':
+            # keep depot
+            continue
+        elif abs(graph.nodes[node]['sup']) <= delta:
+            if graph.nodes[node]['sup'] > 0:
+                removal_sup_nodes.append(node)
+                removal_sup_total.append(graph.nodes[node]['sup'])
+            elif graph.nodes[node]['sup'] < 0:
+                removal_dem_nodes.append(node)
+                removal_dem_total.append(graph.nodes[node]['sup'])
+            else:
+                removal_nodes.append(node)
+    
+    removal_sup_nodes, removal_dem_nodes, find = fix_balance_after_removal_by_combination(removal_sup_total, removal_sup_nodes, removal_dem_total, removal_dem_nodes)
+
+    if find:
+        removal_nodes += removal_sup_nodes
+        removal_nodes += removal_dem_nodes
+        graph.remove_nodes_from(removal_nodes)
+
+    return find, graph
 
 
 def get_graph_after_rebalance(problem):
-    """get original graph, apply loading and get graph after rebalance
+    # TODO refactor
+    """apply window to nodes which has supply/node within the window 
+       while keeping total imbalance
     """
     graph = problem.model
     vehicles = problem.vehicles
