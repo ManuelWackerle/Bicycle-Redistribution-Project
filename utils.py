@@ -197,6 +197,18 @@ def show_improvement_graph(distance_hist, time_hist, operation_hist, ordered_nbh
 
 
 def fix_balance_after_removal_by_combination(removal_sup_total, removal_sup_nodes, removal_dem_total, removal_dem_nodes):
+    """
+    Adjusts the balance of supply and demand after removing nodes by combination.
+
+    Args:
+        removal_sup_total (list): List of supply values for the nodes being removed.
+        removal_sup_nodes (list): List of supply nodes being removed.
+        removal_dem_total (list): List of demand values for the nodes being removed.
+        removal_dem_nodes (list): List of demand nodes being removed.
+
+    Returns:
+        tuple: A tuple containing the adjusted removal_sup_nodes, removal_dem_nodes, and a flag indicating if a balance was found.
+    """
     # TODO refactor
     find = True
     diff = sum(removal_sup_total) + sum(removal_dem_total)
@@ -240,6 +252,33 @@ def fix_balance_after_removal_by_combination(removal_sup_total, removal_sup_node
 
 
 def fix_balance_after_removal_by_reduction(removal_sup_total, removal_sup_nodes, removal_dem_total, removal_dem_nodes, graph):
+    """This function adjusts the balance in a graph after the removal of nodes based on the reduction strategy. It takes the following parameters:
+
+    Args:
+        removal_sup_total (list): The supply to be removed for each node in the graph.
+        removal_sup_nodes (list): Node identifiers corresponding to the supply nodes to be removed.
+        removal_dem_total (list): The total demand to be removed for each node in the graph.
+        removal_dem_nodes (list): Node identifiers corresponding to the demand nodes to be removed.
+        graph: The graph object representing the network.
+    Returns
+        removal_sup_nodes (list): Updated node identifiers corresponding to the supply nodes to be removed.
+        removal_dem_nodes (list): Updated node identifiers corresponding to the demand nodes to be removed.
+    
+    It adjusts the balance of supply and demand by choosing as much node as possible and reducing supply/demand at the end.
+    Example:
+        Suppose
+            supply nodes' supply: [1, 1, 1, 2, 2] --> total supply 7
+            demand nodes' demand: [-2, -2, -2]    --> total demand -6.
+        Since total supply is (in absolute value) larger than total demand, choose all demand nodes.
+        Then choose as much supply nodes as possible while total supply is 6 (=abs(total demand)) by
+            [1, ] -> total 1 < 6, so choose first node from supply
+            [1, 1, ] -> total 2 < 6, so choose second node from supply
+            [1, 1, 1, ] -> total 3 < 6, so choose third node from supply
+            [1, 1, 1, 2] -> total 5 < 6, so choose fourth node from supply
+            [1, 1, 1, 2, 2] -> total 7 > 6, so choose fifth node from supply, but reduce supply
+                => [1, 1, 1, 2, 1] -> total 6=6
+        return nodes with supply/demand [1, 1, 1, 2, 1] + [-2, -2, -2]
+    """
     # TODO refactor
     removal_idxes = []
     if sum(removal_sup_total) + sum(removal_dem_total) > 0:
@@ -270,7 +309,9 @@ def fix_balance_after_removal_by_reduction(removal_sup_total, removal_sup_nodes,
 
 
 def update_problem_with_all_window(graph, delta=0):
-    """apply window and remove node within the window while keeping total imbalance
+    """Apply window and remove node within the window while keeping total imbalance
+       For nodes within the window --> the nodes are removed.
+       For nodes outside the window --> the demand/supply is reduced by window size.
     """
     # TODO refactor
     removal_sup_nodes = []
@@ -306,8 +347,9 @@ def update_problem_with_all_window(graph, delta=0):
 
 
 def update_problem_with_partial_window(graph, delta=0):
-    """apply window to nodes which has supply/node within the window 
-       while keeping total imbalance
+    """Apply window to nodes which has supply/node within the window while keeping total imbalance
+       For nodes within the window --> the nodes are removed.
+       For nodes outside the window --> keep the demand/supply
     """
     # TODO refactor
     removal_sup_nodes = []
@@ -341,8 +383,7 @@ def update_problem_with_partial_window(graph, delta=0):
 
 def get_graph_after_rebalance(problem):
     # TODO refactor
-    """apply window to nodes which has supply/node within the window 
-       while keeping total imbalance
+    """Given routes and loading instructions, return the graph of which supply/demand is updated.
     """
     graph = problem.model
     vehicles = problem.vehicles
@@ -356,6 +397,8 @@ def get_graph_after_rebalance(problem):
 
 
 def get_total_imbalance_from_aux_graph(aux_graph):
+    """Given graph given by get_graph_after_rebalance function, return total supply/demand.
+    """
     total = 0
     for node in aux_graph.nodes:
         total += abs(aux_graph.nodes[node]['sup'])
