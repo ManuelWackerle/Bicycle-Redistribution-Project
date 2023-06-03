@@ -251,7 +251,7 @@ def fix_balance_after_removal_by_combination(removal_sup_total, removal_sup_node
     return removal_sup_nodes, removal_dem_nodes, find
 
 
-def fix_balance_after_removal_by_reduction(removal_sup_total, removal_sup_nodes, removal_dem_total, removal_dem_nodes, graph):
+def fix_balance_after_removal_by_inside_reduction(removal_sup_nodes, removal_dem_nodes, sup_nodes_outside, dem_nodes_outside, graph):
     """This function adjusts the balance in a graph after the removal of nodes based on the reduction strategy. It takes the following parameters:
 
     Args:
@@ -281,67 +281,84 @@ def fix_balance_after_removal_by_reduction(removal_sup_total, removal_sup_nodes,
     """
     # TODO refactor
     removal_idxes = []
-    if sum(removal_sup_total) + sum(removal_dem_total) > 0:
-        max_dem_total = abs(sum(removal_dem_total))
+    removal_sup_total = [graph.nodes[node]['sup'] for node in removal_sup_nodes]
+    removal_dem_total = [graph.nodes[node]['sup'] for node in removal_dem_nodes]
+    diff = sum(removal_sup_total) + sum(removal_dem_total)
+    tmp = 0
+    if diff > 0:
+        max_val = abs(sum(removal_dem_total))
         removal_sup_total, removal_sup_nodes = zip(*sorted(zip(removal_sup_total, removal_sup_nodes)))
         for i in range(len(removal_sup_nodes)):
-            if removal_sup_total[i] < max_dem_total:
-                max_dem_total -= removal_sup_total[i]
+            if removal_sup_total[i] <= max_val:
+                max_val -= removal_sup_total[i]
                 removal_idxes.append(i)
             else:
-                graph.nodes[removal_sup_nodes[i]]['sup'] -= max_dem_total
+                tmp = max_val
+                graph.nodes[removal_sup_nodes[i]]['sup'] -= max_val
                 break
         removal_sup_nodes = [x for j, x in enumerate(removal_sup_nodes) if j in removal_idxes]
         removal_sup_total = [x for j, x in enumerate(removal_sup_total) if j in removal_idxes]
-    elif sum(removal_sup_total) + sum(removal_dem_total) < 0:
-        max_sup_total = sum(removal_sup_total)
+    elif diff < 0:
+        max_val = sum(removal_sup_total)
         removal_dem_total, removal_dem_nodes = zip(*sorted(zip(removal_dem_total, removal_dem_nodes), reverse=True))
         for i in range(len(removal_dem_nodes)):
-            if removal_dem_total[i] < max_sup_total:
-                max_sup_total -= abs(removal_dem_total[i])
+            if abs(removal_dem_total[i]) <= max_val:
+                max_val -= abs(removal_dem_total[i])
                 removal_idxes.append(i)
             else:
-                graph.nodes[removal_dem_nodes[i]]['sup'] -= max_sup_total
+                tmp = -max_val
+                graph.nodes[removal_dem_nodes[i]]['sup'] += max_val
                 break
         removal_dem_nodes = [x for j, x in enumerate(removal_dem_nodes) if j in removal_idxes]
         removal_dem_total = [x for j, x in enumerate(removal_dem_total) if j in removal_idxes]
-    return removal_sup_nodes, removal_dem_nodes
+    assert sum(removal_dem_total) + sum(removal_sup_total) + tmp == 0
+    N = min(len(sup_nodes_outside), len(dem_nodes_outside))
+    sup_nodes_outside = sup_nodes_outside[:N]
+    dem_nodes_outside = dem_nodes_outside[:N]
+    return removal_sup_nodes, removal_dem_nodes, sup_nodes_outside, dem_nodes_outside
 
 
-def update_problem_with_all_window(graph, delta=0):
+def update_problem_with_all_window(problem, delta=0):
     """Apply window and remove node within the window while keeping total imbalance
        For nodes within the window --> the nodes are removed.
        For nodes outside the window --> the demand/supply is reduced by window size.
     """
+    if not delta > 0:
+        # if we do not apply window, just return the original graph.
+        return True, problem.model
     # TODO refactor
-    removal_sup_nodes = []
-    removal_sup_total = []
-    removal_dem_nodes = []
-    removal_dem_total = []
+    sup_nodes_inside = []
+    dem_nodes_inside = []
+    sup_nodes_outside = []
+    dem_nodes_outside = []
     removal_nodes = []
+    graph = problem.model
     for node in graph.nodes:
-        if node == '0':
-            # keep depot
+        if node == problem.depot:
             continue
         elif abs(graph.nodes[node]['sup']) <= delta:
             if graph.nodes[node]['sup'] > 0:
-                removal_sup_nodes.append(node)
-                removal_sup_total.append(graph.nodes[node]['sup'])
+                sup_nodes_inside.append(node)
             elif graph.nodes[node]['sup'] < 0:
-                removal_dem_nodes.append(node)
-                removal_dem_total.append(graph.nodes[node]['sup'])
+                dem_nodes_inside.append(node)
             else:
                 removal_nodes.append(node)
         elif graph.nodes[node]['sup'] > delta:
-            graph.nodes[node]['sup'] -= delta
-        else:
-            graph.nodes[node]['sup'] += delta
+            sup_nodes_outside.append(node)
+        elif graph.nodes[node]['sup'] < -delta:
+            dem_nodes_outside.append(node)
     
-    removal_sup_nodes, removal_dem_nodes = fix_balance_after_removal_by_reduction(removal_sup_total, removal_sup_nodes, removal_dem_total, removal_dem_nodes, graph)
+    sup_nodes_inside, dem_nodes_inside, sup_nodes_outside, dem_nodes_outside = fix_balance_after_removal_by_inside_reduction(sup_nodes_inside, dem_nodes_inside, sup_nodes_outside, dem_nodes_outside, graph)
 
-    removal_nodes += removal_sup_nodes
-    removal_nodes += removal_dem_nodes
+    removal_nodes += sup_nodes_inside
+    removal_nodes += dem_nodes_inside
     graph.remove_nodes_from(removal_nodes)
+
+    for node in sup_nodes_outside:
+        graph.nodes[node]['sup'] -= delta
+    
+    for node in dem_nodes_outside:
+        graph.nodes[node]['sup'] += delta
 
     return True, graph
 
@@ -385,21 +402,31 @@ def get_graph_after_rebalance(problem):
     # TODO refactor
     """Given routes and loading instructions, return the graph of which supply/demand is updated.
     """
-    graph = problem.model
     vehicles = problem.vehicles
-    auxiliary_graph = deepcopy(graph)
+    auxiliary_graph = deepcopy(problem.model)
     for vehicle in vehicles:
         prev = 0
-        for curr in range(1, len(vehicle.route())-1):
+        for curr in range(len(vehicle.route())-1):
             auxiliary_graph.nodes[vehicle.route()[curr]]['sup'] -= vehicle.loads()[curr] - vehicle.loads()[prev]
             prev = curr
     return auxiliary_graph
 
 
+def assert_total_imbalance(problem):
+    """
+    """
+    return sum(problem.model.nodes[node]['sup'] for node in problem.model.nodes) == 0
+
+
 def get_total_imbalance_from_aux_graph(aux_graph):
     """Given graph given by get_graph_after_rebalance function, return total supply/demand.
     """
-    total = 0
-    for node in aux_graph.nodes:
-        total += abs(aux_graph.nodes[node]['sup'])
-    return total
+    return sum(abs(aux_graph.nodes[node]['sup']) for node in aux_graph.nodes)
+
+
+def get_max_imbalance_from_aux_graph(aux_graph, depot_node):
+    """Given graph given by get_graph_after_rebalance function, return max supply/demand. (to check the windowing)
+    """
+    abs_val = [abs(aux_graph.nodes[node]['sup']) for node in aux_graph.nodes if node != depot_node]
+    return max(abs_val)
+
