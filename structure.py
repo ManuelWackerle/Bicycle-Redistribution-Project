@@ -8,7 +8,7 @@ class Vehicle(object):
     """
     Vehicle: contains vehicle identification, capacity and vehicle route information.
     """
-    def __init__(self, capacity: int, vehicle_id: str, distance_limit=100):
+    def __init__(self, capacity: int, vehicle_id: str, depot='0', distance_limit=100):
         """
         Initializes the vehicle class
         :param capacity: Maximum number of bikes that the vehicle can carry at any time
@@ -16,6 +16,7 @@ class Vehicle(object):
         :param distance_limit: -not used-
         """
         self._capacity = capacity
+        self._depot = depot
         self._id = vehicle_id
         self._route = []
         self._loads = []
@@ -35,6 +36,9 @@ class Vehicle(object):
         del self._loads[stop_indx]
         # self._current_position = None
         # self._current_load = 0
+
+    def depot(self):
+        return self._depot
 
     def current_stop(self):
         return self._current_position
@@ -177,6 +181,42 @@ class ProblemInstance:
         vehicle.update_distance(dist)
         return dist
 
+    def calculate_costs(self, vehicles=None):
+        """
+            Given a set of vehicles with corresponding routes, calculate the total distance travelled
+            :param vehicles: array of vehicle objects
+            :return total: the total distance travelled in metres
+        """
+        total = 0
+        if vehicles is None:
+            vehicles = self.vehicles
+        for v in vehicles:
+            total += self.calculate_cost(v)
+        self.average_distance = total/len(vehicles)
+        return total
+
+    def calculate_cost(self, vehicle):
+        """
+            Given a single vehicles with a corresponding route, calculate the cost for each vehicle
+            :param vehicle: an object of class Vehicle
+            :return cost: the cost in terms of travel time
+        """
+        stop_duration = 40
+        load_duration = 15
+
+        dist = 0
+        prev = vehicle.route()[0]
+        prev_load = 0
+        for s in range(1, len(vehicle.route())):
+            move = abs(vehicle.loads()[s - 1] - prev_load)
+            node = vehicle.route()[s]
+            dist += self.distance(prev, node) + load_duration * move
+            dist += round(self.node_data[node]['ff_ratio'] * move) * stop_duration
+            prev = node
+            prev_load = vehicle.loads()[s - 1]
+        vehicle.update_distance(dist)
+        return dist
+
     def check_distance_limits(self):
         """
             Check distance limit for all vehicles
@@ -308,6 +348,7 @@ class ProblemInstance:
             Displays the information in routes and instructions in a human-readable way
             :param show_instructions: set to True to show loading instructions at each stop
         """
+        self.calculate_loading_mf()  # Ensure loading is up to date
         results = "Results\t\t"
 
         if show_instructions:
@@ -327,6 +368,8 @@ class ProblemInstance:
             results += "\n"
 
         d = round(self.calculate_distances()/1000, 3)
+        # d = round(self.calculate_costs()/1000, 3)
+
         success = bcolors.OKGREEN if self.allocated == self.imbalance else bcolors.FAIL
         results += bcolors.BOLD + bcolors.OKGREEN + "Total Distance:{:10}km".format(d) + bcolors.ENDC + " ||  "
         results += success + bcolors.BOLD + " Total Rebalanced: {}/{}".format(self.allocated,

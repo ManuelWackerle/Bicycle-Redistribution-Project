@@ -103,13 +103,13 @@ def load_subset_from_ordered_nodes(nodes, centeredness=5, directed=True, randomn
     # Load node data
     root = os.path.dirname(os.path.abspath(os.getcwd()))
     folder = os.path.join(root, 'Problem Instances')
-    data = csv.reader(open(folder + '/ordered_nodes.csv', "r"))
+    data = csv.reader(open(folder + '/ordered_nodes_with_ff_ratio.csv', "r"))
     next(data)  # skip header line
     depot_node = next(data)
     source_nodes, sink_nodes = [], []
     for row in data:
-        bin_id, supply_str, std_dev_str, lat_str, long_str = row
-        new_row = [bin_id, int(supply_str), int(std_dev_str), float(long_str), float(lat_str)]
+        bin_id, supply_str, std_dev_str, lat_str, long_str, ff_ratio = row
+        new_row = [bin_id, int(supply_str), int(std_dev_str), float(long_str), float(lat_str), float(ff_ratio)]
         if int(supply_str) > 0:
             source_nodes.append(new_row)
         else:
@@ -142,19 +142,19 @@ def load_subset_from_ordered_nodes(nodes, centeredness=5, directed=True, randomn
 
     random_indexes = np.concatenate((random_sources, random_sinks))
 
-    bin_id, _, _, lat_str, long_str = depot_node
+    bin_id, _, _, lat_str, long_str, ff_ratio = depot_node
     graph.add_node(str(0), sup=0)  # add depot node with zero load
     graph.add_edge(str(0), str(0), dist=0)  # add self edge
-    node_data[str(0)] = {'bin_id': bin_id, 'pos': (float(long_str), float(lat_str))}
+    node_data[str(0)] = {'bin_id': bin_id, 'pos': (float(long_str), float(lat_str)), 'ff_ratio': ff_ratio}
 
     for i in random_indexes:
         count += 1
-        bin_id, mean_supply, std_dev, x, y = ordered_nodes[i]
+        bin_id, mean_supply, std_dev, x, y, ff_ratio = ordered_nodes[i]
         supply = int(round(np.random.normal(mean_supply, std_dev)))
         supply = -1 if supply == 0 else supply
         total_supply += supply
         graph.add_node(str(count), sup=supply)
-        node_data[str(count)] = {'bin_id': bin_id, 'pos': (x, y)}
+        node_data[str(count)] = {'bin_id': bin_id, 'pos': (x, y), 'ff_ratio': ff_ratio}
         for node, data in node_data.items():
             if directed:
                 graph.add_edge(node, str(count), dist=adjacency_dict[bin_id][data['bin_id']])

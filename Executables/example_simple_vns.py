@@ -1,6 +1,8 @@
 """
 Use this file to run a standard VNS
 """
+import random
+
 from loaders import load_subset_from_ordered_nodes
 from structure import ProblemInstance, Vehicle
 import utils
@@ -19,8 +21,10 @@ kwargs = {
 
 # Load a subset of the data from MVG dataset and create the Vehicles and Problem Instance objects
 graph, node_info = load_subset_from_ordered_nodes(nodes=kwargs['nodes'], randomness=False)
-vehicles = [Vehicle(capacity=kwargs['vehicle_capacity'], vehicle_id=str(i)) for i in range(kwargs['num_vehicles'])]
-problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)
+
+vehicles = [Vehicle(capacity=kwargs['vehicle_capacity'], vehicle_id=str(i),
+                    depot=str(random.randint(0, kwargs['nodes'] - 1))) for i in range(kwargs['num_vehicles'])]
+problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=1)
 
 
 # Create and initial set of solutions using the greedy algorithm and calculate the loading instrunctions
@@ -31,7 +35,8 @@ problem.display_results(show_instructions=False)
 
 
 # Run the VNS and time it
-operator_seq = [ops.inter_segment_swap, ops.intra_segment_swap, ops.inter_two_opt, ops.intra_two_opt]
+# operator_seq = [ops.inter_segment_swap, ops.intra_segment_swap, ops.inter_two_opt, ops.intra_two_opt]
+operator_seq = [ops.inter_segment_swap, ops.intra_segment_swap, ops.intra_two_opt]
 start_time = time.time()
 
 distance_hist, time_hist, operation_hist = solvers.general_variable_nbh_search(

@@ -88,8 +88,8 @@ def greedy_routing(prob, dist_weight=3, tsp_weight=1, randomness=False):
                 if next_move < 0:
                     prob.allocated -= next_move
         for v in prob.vehicles:
-            if v.current_stop() != prob.depot:
-                v.add_stop(prob.depot, 0)
+            if v.current_stop() != v.depot():  # prob.depot:
+                v.add_stop(v.depot(), 0)  # prob.depot, 0)
 
 
 def random_routing(prob):
@@ -125,21 +125,20 @@ def random_routing(prob):
                     prob.allocated -= move
 
         for v in prob.vehicles:
-            if v.current_stop() != prob.depot:
-                v.add_stop(prob.depot, 0)
+            if v.current_stop() != v.depot():  # prob.depot
+                v.add_stop(v.depot(), 0)  # prob.depot, 0)
 
 
 def load_all_at_depot(prob, graph_copy):
-    source_sup = graph_copy.nodes[prob.depot]['sup']
-    if source_sup > 0:
-        for v in prob.vehicles:
-            source_sup = graph_copy.nodes[prob.depot]['sup']
+    for v in prob.vehicles:
+        source_sup = graph_copy.nodes[v.depot()]['sup']
+        if source_sup > 0:
+            source_sup = graph_copy.nodes[v.depot()]['sup']
             move = min(source_sup, v.capacity())
-            v.add_stop(prob.depot, move)
-            graph_copy.nodes[prob.depot]['sup'] -= move
-    else:
-        for v in prob.vehicles:
-            v.add_stop(prob.depot, 0)
+            v.add_stop(v.depot(), move)
+            graph_copy.nodes[v.depot()]['sup'] -= move
+        else:
+            v.add_stop(v.depot(), 0)
 
 
 """
