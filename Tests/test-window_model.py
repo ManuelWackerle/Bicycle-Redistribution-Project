@@ -48,13 +48,14 @@ import time
 import csv
 from tqdm import tqdm
 from copy import deepcopy
+from itertools import product
 import sys
 sys.path.append(os.getcwd())
 
 import solvers
 from structure import Vehicle, ProblemInstance
 import operators as ops
-from loaders import load_subset_from_ordered_nodes
+from loaders import load_subset_from_ordered_nodes, load_graph
 
 from tests.test_base import TestLNS
 from utils import (
@@ -66,9 +67,12 @@ from utils import (
     assert_total_imbalance,
 )
 
+DATASETS = ['munich', 'nyc_dummy', 'nyc']
+BALANCE_FIX = ['outside', 'inside']
 
 KWARGS = {
-    'nodes': 50,
+    'nodes': 500,
+    'dataset': 'munich',  # should be among ['munich', 'nyc_dummy', 'nyc'] = DATASETS
     'centeredness': 5,
     'number_of_vehicles': 5,
     'vehicle_capacity': 5,
@@ -83,9 +87,10 @@ KWARGS = {
     'root': os.path.join(os.getcwd(), 'results'),
     'read_only': False,
     'filename': 'test_window_model.csv',
-    'num_try': 10,
+    'num_try': 1,
     'max_window': 5,
     'window_model': update_problem_with_all_window,
+    'balance_fix': 'outside',  # should be in ['inside', outside] = BALANCE_FIX
 }
 
 class TestWindowModel(TestLNS):
@@ -93,11 +98,27 @@ class TestWindowModel(TestLNS):
         super().__init__(*args, **kwargs)
         self.max_window = kwargs['max_window']
         self.window_model = kwargs['window_model']
+        self.dataset = kwargs['dataset']
+        self.balance_fix = kwargs['balance_fix']
+        assert self.dataset in DATASETS
+        assert self.balance_fix in BALANCE_FIX
 
-    def get_problem_instance(self, graph, node_info, delta=0):
+    def get_original_problem(self):
+        if self.dataset == 'nyc_dummy':
+            original_graph, node_info, _depot = load_graph('nyc_instance_dummy', location='nyc_dummy')
+        elif self.dataset == 'nyc':
+            original_graph, node_info, _depot = load_graph('nyc_instance', location='nyc')
+        elif self.dataset == 'munich':
+            original_graph, node_info = load_subset_from_ordered_nodes(nodes=self.nodes, centeredness=self.centeredness, randomness=self.randomness)
+            _depot = '0'
+        else:
+            raise Exception("Unexpected dataset name. It should be among 'munich', 'nyc_dummy', or 'nyc'")
+        return original_graph, node_info, _depot
+
+    def get_problem_instance(self, graph, node_info, depot='0'):
         vehicles = [Vehicle(capacity=self.vehicle_capacity, vehicle_id=str(i), distance_limit=self.distance_limit)
                     for i in range(self.number_of_vehicles)]
-        problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)
+        problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0, depot=depot)
         return problem
 
     def solver(self, original_problem, window_problem):
@@ -105,9 +126,9 @@ class TestWindowModel(TestLNS):
         self.run_vns(window_problem)
         original_problem.vehicles = window_problem.vehicles
         dist = original_problem.calculate_distances()
-        total_bikes = get_total_imbalance_from_aux_graph(original_problem.model)
+        total_bikes = get_total_imbalance_from_aux_graph(original_problem.model, original_problem.depot)
         aux_graph = get_graph_after_rebalance(original_problem)
-        imbalance = get_total_imbalance_from_aux_graph(aux_graph)
+        imbalance = get_total_imbalance_from_aux_graph(aux_graph, original_problem.depot)
         max_imbalance = get_max_imbalance_from_aux_graph(aux_graph, original_problem.depot)
         efficiency = (total_bikes - imbalance) / dist * 1000
         return dist, imbalance, max_imbalance, efficiency
@@ -118,17 +139,20 @@ class TestWindowModel(TestLNS):
         results = []
         for _ in tqdm(range(num_try)):
             result = []
-            original_graph, node_info = load_subset_from_ordered_nodes(nodes=self.nodes, centeredness=self.centeredness, randomness=self.randomness)
-            original_problem = self.get_problem_instance(original_graph, node_info)
-            assert assert_total_imbalance(original_problem)
+            original_graph, node_info, _depot = self.get_original_problem()
+            original_problem = self.get_problem_instance(original_graph, node_info, depot=_depot)
+            assert assert_total_imbalance(original_problem) == 0
             for delta in range(self.max_window):
-                find, window_graph = self.window_model(deepcopy(original_problem), delta)
-                if not find:
-                    break
-                window_problem = self.get_problem_instance(window_graph, node_info)
-                assert assert_total_imbalance(window_problem)
+                st = time.time()
+                find, window_graph = self.window_model(deepcopy(original_problem), delta, self.balance_fix)
+                window_problem = self.get_problem_instance(window_graph, node_info, depot=_depot)
+                if assert_total_imbalance(window_problem) != 0:
+                    print(f"assertoion error. delta {delta}. total {assert_total_imbalance(window_problem)}.")
                 dist, imbalance, max_imbalance, efficiency = self.solver(original_problem, window_problem)
-                result += [dist, imbalance, max_imbalance, efficiency]
+                et = time.time()
+                if max_imbalance > delta:
+                    print(f"max imbalance error with delta {delta} and max {max_imbalance}")
+                result += [dist/1000, 2*original_problem.imbalance, imbalance, max_imbalance, efficiency, et-st]
             if not find:
                 continue
             writer.writerow(result)
@@ -137,28 +161,32 @@ class TestWindowModel(TestLNS):
 
 
 def main():
-    sections = ['Dist', 'Total Imb', 'Max Imb', 'Efficiency']
-    N = len(sections)
-    test_instance = TestWindowModel(**KWARGS)
-    if KWARGS.get('read_only'):
-        header, results = test_instance.read_results_from_csv(KWARGS.get('filename', 'test_window_model.csv'))
-    else:
-        header=[x 
-                for delta in range(KWARGS['max_window'])
-                for x in [f'Window={delta}' for _ in range(N)]]
-        results = test_instance.write_results_to_csv(
-            filename=KWARGS.get('filename', 'test_window_model.csv'),
-            header=header,
-            num_try=KWARGS.get('num_try', 100),
-        )
-    mean, std = test_instance.get_stats(results)
+    for dataset, balance_fix in product(['munich', 'nyc_dummy'], BALANCE_FIX):
+        KWARGS['dataset'] = dataset
+        KWARGS['balance_fix'] = balance_fix
+        sections = ['Dist [km]', 'Origi Imb', 'Total Imb', 'Max Imb', 'Efficiency', 'Time [s]']
+        N = len(sections)
+        test_instance = TestWindowModel(**KWARGS)
+        if KWARGS.get('read_only'):
+            header, results = test_instance.read_results_from_csv(KWARGS.get('filename', 'test_window_model.csv'))
+        else:
+            header=[x 
+                    for delta in range(KWARGS['max_window'])
+                    for x in [f'Window={delta}' for _ in range(N)]]
+            results = test_instance.write_results_to_csv(
+                filename=KWARGS.get('filename', 'test_window_model.csv'),
+                header=header,
+                num_try=KWARGS.get('num_try', 100),
+            )
+        mean, std = test_instance.get_stats(results)
 
-    print(''.join(['{:>10}'.format('----------')] + ['{:>10}'.format('----------') for i, x in enumerate(std) if i%N == 0]))
-    for k, section in enumerate(sections):
-        print(''.join(['{:>10}'.format(section)] + ['{:>10}'.format(x) for i, x in enumerate(header) if i%N == k]))
-        print(''.join(['{:>10}'.format('Mean')] + ['{:>10.2f}'.format(float(x)) for i, x in enumerate(mean) if i%N == k]))
-        print(''.join(['{:>10}'.format('Std')] + ['{:>10.2f}'.format(float(x)) for i, x in enumerate(std) if i%N == k]))
-        print(''.join(['{:>10}'.format('----------')] + ['{:>10}'.format('----------') for i, x in enumerate(std) if i%N == k]))
+        print(f"dataset {dataset}, balance_fix {balance_fix}")
+        print(''.join(['{:>10}'.format('----------')] + ['{:>10}'.format('----------') for i, x in enumerate(std) if i%N == 0]))
+        for k, section in enumerate(sections):
+            print(''.join(['{:>10}'.format(section)] + ['{:>10}'.format(x) for i, x in enumerate(header) if i%N == k]))
+            print(''.join(['{:>10}'.format('Mean')] + ['{:>10.2f}'.format(float(x)) for i, x in enumerate(mean) if i%N == k]))
+            print(''.join(['{:>10}'.format('Std')] + ['{:>10.2f}'.format(float(x)) for i, x in enumerate(std) if i%N == k]))
+            print(''.join(['{:>10}'.format('----------')] + ['{:>10}'.format('----------') for i, x in enumerate(std) if i%N == k]))
 
 if __name__ == '__main__':
     main()

@@ -251,7 +251,7 @@ def fix_balance_after_removal_by_combination(removal_sup_total, removal_sup_node
     return removal_sup_nodes, removal_dem_nodes, find
 
 
-def fix_balance_after_removal_by_inside_reduction(removal_sup_nodes, removal_dem_nodes, sup_nodes_outside, dem_nodes_outside, graph):
+def fix_balance_after_removal_by_inside_reduction(removal_sup_nodes, removal_dem_nodes, sup_nodes_outside, dem_nodes_outside, graph, depot_fixing):
     """This function adjusts the balance in a graph after the removal of nodes based on the reduction strategy. It takes the following parameters:
 
     Args:
@@ -283,7 +283,7 @@ def fix_balance_after_removal_by_inside_reduction(removal_sup_nodes, removal_dem
     removal_idxes = []
     removal_sup_total = [graph.nodes[node]['sup'] for node in removal_sup_nodes]
     removal_dem_total = [graph.nodes[node]['sup'] for node in removal_dem_nodes]
-    diff = sum(removal_sup_total) + sum(removal_dem_total)
+    diff = sum(removal_sup_total) + sum(removal_dem_total) + depot_fixing
     tmp = 0
     if diff > 0:
         max_val = abs(sum(removal_dem_total))
@@ -318,7 +318,34 @@ def fix_balance_after_removal_by_inside_reduction(removal_sup_nodes, removal_dem
     return removal_sup_nodes, removal_dem_nodes, sup_nodes_outside, dem_nodes_outside
 
 
-def update_problem_with_all_window(problem, delta=0):
+def fix_balance_after_removal_by_outside_increase(sup_nodes_inside, dem_nodes_inside, sup_nodes_outside, dem_nodes_outside, graph, delta, _depot_fixing):
+    total_sup_inside = sum(graph.nodes[node]['sup'] for node in sup_nodes_inside) + delta * len(sup_nodes_outside)
+    total_dem_inside = sum(graph.nodes[node]['sup'] for node in dem_nodes_inside) - delta * len(dem_nodes_outside)
+    diff = total_sup_inside + total_dem_inside + _depot_fixing
+    # delta = 2*delta
+    if diff > 0:
+        for node in sup_nodes_outside:
+            if diff >= delta:
+                diff -= delta
+                graph.nodes[node]['sup'] += delta
+            else:
+                graph.nodes[node]['sup'] += diff
+                diff = 0
+                break
+    elif diff < 0:
+        diff = -diff
+        for node in dem_nodes_outside:
+            if diff >= delta:
+                diff -= delta
+                graph.nodes[node]['sup'] -= delta
+            else:
+                graph.nodes[node]['sup'] -= diff
+                diff = 0
+                break
+    return sup_nodes_inside, dem_nodes_inside, sup_nodes_outside, dem_nodes_outside
+
+
+def update_problem_with_all_window(problem, delta=0, balance_fix='outside'):
     """Apply window and remove node within the window while keeping total imbalance
        For nodes within the window --> the nodes are removed.
        For nodes outside the window --> the demand/supply is reduced by window size.
@@ -333,11 +360,13 @@ def update_problem_with_all_window(problem, delta=0):
     dem_nodes_outside = []
     removal_nodes = []
     graph = problem.model
+    depot_fixing = 0
     for node in graph.nodes:
-        if node == problem.depot:
-            continue
-        elif abs(graph.nodes[node]['sup']) <= delta:
-            if graph.nodes[node]['sup'] > 0:
+        if abs(graph.nodes[node]['sup']) <= delta:
+            if node == problem.depot:
+                depot_fixing = graph.nodes[node]['sup']
+                graph.nodes[node]['sup'] = 0
+            elif graph.nodes[node]['sup'] > 0:
                 sup_nodes_inside.append(node)
             elif graph.nodes[node]['sup'] < 0:
                 dem_nodes_inside.append(node)
@@ -347,8 +376,13 @@ def update_problem_with_all_window(problem, delta=0):
             sup_nodes_outside.append(node)
         elif graph.nodes[node]['sup'] < -delta:
             dem_nodes_outside.append(node)
-    
-    sup_nodes_inside, dem_nodes_inside, sup_nodes_outside, dem_nodes_outside = fix_balance_after_removal_by_inside_reduction(sup_nodes_inside, dem_nodes_inside, sup_nodes_outside, dem_nodes_outside, graph)
+
+    if balance_fix == 'outside':
+        sup_nodes_inside, dem_nodes_inside, sup_nodes_outside, dem_nodes_outside = fix_balance_after_removal_by_outside_increase(sup_nodes_inside, dem_nodes_inside, sup_nodes_outside, dem_nodes_outside, graph, delta, depot_fixing)
+    elif balance_fix == 'inside':
+        sup_nodes_inside, dem_nodes_inside, sup_nodes_outside, dem_nodes_outside = fix_balance_after_removal_by_inside_reduction(sup_nodes_inside, dem_nodes_inside, sup_nodes_outside, dem_nodes_outside, graph, depot_fixing)
+    else:
+        raise Exception("unexpected balance fixing method.")
 
     removal_nodes += sup_nodes_inside
     removal_nodes += dem_nodes_inside
@@ -406,22 +440,28 @@ def get_graph_after_rebalance(problem):
     auxiliary_graph = deepcopy(problem.model)
     for vehicle in vehicles:
         prev = 0
-        for curr in range(len(vehicle.route())-1):
+        m = len(vehicle.route())-1
+        auxiliary_graph.nodes[vehicle.route()[prev]]['sup'] -= vehicle.loads()[prev]
+        if len(vehicle.route()) != len(vehicle.loads()) + 1:
+            m = min(m, len(vehicle.loads()))
+            print(f"len routes {len(vehicle.route())}, len loads {len(vehicle.loads())}")
+        for curr in range(1, m):
             auxiliary_graph.nodes[vehicle.route()[curr]]['sup'] -= vehicle.loads()[curr] - vehicle.loads()[prev]
             prev = curr
+        auxiliary_graph.nodes[vehicle.route()[curr+1]]['sup'] += vehicle.loads()[curr]
     return auxiliary_graph
 
 
 def assert_total_imbalance(problem):
     """
     """
-    return sum(problem.model.nodes[node]['sup'] for node in problem.model.nodes) == 0
+    return sum(problem.model.nodes[node]['sup'] for node in problem.model.nodes)
 
 
-def get_total_imbalance_from_aux_graph(aux_graph):
+def get_total_imbalance_from_aux_graph(aux_graph, depot_node):
     """Given graph given by get_graph_after_rebalance function, return total supply/demand.
     """
-    return sum(abs(aux_graph.nodes[node]['sup']) for node in aux_graph.nodes)
+    return sum(abs(aux_graph.nodes[node]['sup']) for node in aux_graph.nodes if node != depot_node)
 
 
 def get_max_imbalance_from_aux_graph(aux_graph, depot_node):
