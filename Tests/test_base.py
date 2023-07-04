@@ -83,7 +83,7 @@ class TestLNS(TestBase):
         super().__init__(*args, **kwargs)
         self.ordered_nbhs = kwargs.get('ordered_nbhs', [ops.intra_two_opt, ops.intra_segment_swap, ops.inter_two_opt, ops.inter_segment_swap])
         self.ordered_large_nbhs = kwargs.get('ordered_large_nbhs', [1, 3, 5, 10, 15, 20, 25, 30, 40, 50])
-        self.change_local_nbh = kwargs.get('change_local_nbh', solvers.change_nbh_sequential)
+        self.change_local_nbh = kwargs.get('change_local_nbh', solvers.change_nbh_cyclic)
         self.change_large_nbh = kwargs.get('change_large_nbh', solvers.change_nbh_pipe)
         self.large_nbh_operator = kwargs.get('large_nbh_operator', ops.multi_remove_and_insert_station)
         self.local_timeout = kwargs.get('local_timeout', 2*60)
