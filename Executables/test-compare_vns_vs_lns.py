@@ -20,6 +20,8 @@ kwargs = {
     'graph_size_step':   100,
     'graph_variations':  1,
     'trials_per_graph':  30,
+    'stop_duration':     40,
+    'load_duration':     15,
     'timeout':           60,
     'ordered_nbhs': [ops.intra_two_opt, ops.intra_segment_swap, ops.inter_two_opt, ops.inter_segment_swap, ],
     'nbh_change_set': [vns.change_nbh_cyclic],
@@ -38,7 +40,7 @@ print("TEST COMPLETE. (Runtime: {} minutes)\n".format(round((stop - start)/60, 1
 # ======================================================================================================================
 # #      Vanilla VNS
 #
-# # graph, node_info = load_subset_from_ordered_nodes(nodes=kwargs['min_graph_size'], centeredness=6, randomness=False)
+# # graph, node_info = load_subset_from_ordered_nodes(nodes=kwargs['min_graph_size'], cost='dist', centeredness=6, randomness=False)
 # # graph, node_info = load_graph('nyc_instance', location='nyc')
 # graph, node_info, depot = loaders.load_graph('nyc_instance_dummy', location='nyc_dummy')
 #
@@ -50,7 +52,7 @@ print("TEST COMPLETE. (Runtime: {} minutes)\n".format(round((stop - start)/60, 1
 # # vns.random_routing(problem)
 # problem.calculate_loading_mf()
 # problem.remove_unused_stops()
-# initial = problem.calculate_distances()
+# initial = problem.calculate_costs()
 # problem.display_results()
 # # visualize_routes(problem.get_all_routes(), node_info)
 # utils.visualize_routes_go(problem.get_all_routes(), node_info)
@@ -63,7 +65,7 @@ print("TEST COMPLETE. (Runtime: {} minutes)\n".format(round((stop - start)/60, 1
 # distances = [problem.calculate_distance(v)/1000 for v in problem.vehicles]
 # std = np.std(np.array(distances))
 # distances = [round(d) for d in distances]
-# final = problem.calculate_distances()
+# final = problem.calculate_costs()
 # impr = (1 - final / initial) * 100
 # print("{:>4}, Improvement: {}%, {:>27}, std={}, time = {}s".format(round(final/1000), round(impr, 1),
 #         str(distances), round(std, 3), round(end1 - start1, 3)))

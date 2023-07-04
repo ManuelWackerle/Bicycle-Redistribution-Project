@@ -20,7 +20,7 @@ kwargs = {
 
 
 # Load a subset of the data from MVG dataset and create the Vehicles and Problem Instance objects
-graph, node_info = load_subset_from_ordered_nodes(nodes=kwargs['nodes'], randomness=False)
+graph, node_info = load_subset_from_ordered_nodes(nodes=kwargs['nodes'], cost='time', randomness=False)
 
 vehicles = [Vehicle(capacity=kwargs['vehicle_capacity'], vehicle_id=str(i),
                     depot=str(random.randint(0, kwargs['nodes'] - 1))) for i in range(kwargs['num_vehicles'])]

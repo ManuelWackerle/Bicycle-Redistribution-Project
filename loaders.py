@@ -77,7 +77,7 @@ def load_graph(graph_name, location='muc', use_adjacency_matrix=True, truncate_a
     return graph, node_data, depot
 
 
-def load_subset_from_ordered_nodes(nodes, centeredness=5, directed=True, randomness=True):
+def load_subset_from_ordered_nodes(nodes, cost, centeredness=5, directed=True, randomness=True):
     """
          Loads a subset of valid nodes from the Munich dataset as a NetworkX graph.
 
@@ -97,10 +97,12 @@ def load_subset_from_ordered_nodes(nodes, centeredness=5, directed=True, randomn
     else:
         graph = nx.Graph()
 
-    adjacency_dict = {}
-    node_data = {}
+    if cost != 'dist' and cost != 'time': #default cost is time
+        cost = 'time'
+    use_csv = False
 
     # Load node data
+    adjacency_dict, node_data = {}, {}
     root = os.path.dirname(os.path.abspath(os.getcwd()))
     folder = os.path.join(root, 'Problem Instances')
     data = csv.reader(open(folder + '/ordered_nodes_with_ff_ratio.csv', "r"))
@@ -120,8 +122,11 @@ def load_subset_from_ordered_nodes(nodes, centeredness=5, directed=True, randomn
 
     # Load edge data
     folder = os.path.join(root, 'MVG Code')
-    edge_data = csv.reader(open(folder + '/adjacency_matrix_muc.csv', 'r'))
-    adjacency_dict = _load_edge_data_into_dict(edge_data, adjacency_dict)
+    if use_csv:
+        edge_data = csv.reader(open(folder + f'/adjacency_matrix_{cost}.csv', 'r'))
+        adjacency_dict = _load_edge_data_into_dict(edge_data, adjacency_dict)
+    else:
+        adjacency_dict = pickle.load(open(folder + f'/adjacency_matrix_{cost}.pkl', 'rb'))
 
     # Generate Random Graph
     count, total_supply = 0, 0
@@ -145,7 +150,7 @@ def load_subset_from_ordered_nodes(nodes, centeredness=5, directed=True, randomn
     bin_id, _, _, lat_str, long_str, ff_ratio = depot_node
     graph.add_node(str(0), sup=0)  # add depot node with zero load
     graph.add_edge(str(0), str(0), dist=0)  # add self edge
-    node_data[str(0)] = {'bin_id': bin_id, 'pos': (float(long_str), float(lat_str)), 'ff_ratio': ff_ratio}
+    node_data[str(0)] = {'bin_id': bin_id, 'pos': (float(long_str), float(lat_str)), 'ff_ratio': float(ff_ratio)}
 
     for i in random_indexes:
         count += 1

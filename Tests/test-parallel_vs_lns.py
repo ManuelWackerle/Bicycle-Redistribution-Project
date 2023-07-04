@@ -78,7 +78,7 @@ class TestParallelLNS(TestLNS):
     def run_paralell_lns(self, problem, ordered_large_nbhs):
         start_time = time.time()
         best_instance = problem
-        best_distance = problem.calculate_distances()
+        best_distance = problem.calculate_costs()
         while time.time() - start_time < self.large_timeout:
             with Pool(self.num_processors) as p:
                 results = p.map(partial(self.reconstruct_and_vns, deepcopy(best_instance)), ordered_large_nbhs)
@@ -92,12 +92,12 @@ class TestParallelLNS(TestLNS):
 
     def run_greedy_lns(self, problem):
         self.run_lns(problem)
-        return problem.calculate_distances()
+        return problem.calculate_costs()
 
     def compare_approaches(self, problem):
         sg = time.time()
         solvers.greedy_routing(problem)
-        g_dist = problem.calculate_distances()
+        g_dist = problem.calculate_costs()
         g_time = time.time() - sg
         s_vns = time.time()
         vns_p = self.run_vns(deepcopy(problem))

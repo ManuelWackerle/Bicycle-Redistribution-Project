@@ -25,7 +25,7 @@ class TestBase(object):
         self.root = kwargs.get('root', os.path.join(os.getcwd(), 'results'))
 
     def get_problem_instance(self):
-        graph, node_info = load_subset_from_ordered_nodes(nodes=self.nodes, centeredness=self.centeredness, randomness=self.randomness)
+        graph, node_info = load_subset_from_ordered_nodes(nodes=self.nodes, cost='time', centeredness=self.centeredness, randomness=self.randomness)
         vehicles = [Vehicle(capacity=self.vehicle_capacity, vehicle_id=str(i), distance_limit=self.distance_limit)
                     for i in range(self.number_of_vehicles)]
         problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)

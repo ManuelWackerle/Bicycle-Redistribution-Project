@@ -79,8 +79,9 @@ def intra_two_opt(prob: ProblemInstance):
         v = vehicles[k]
         for s in swap:
             a, b = s
-            route = v.route()
+            route, loads = v.route(), v.loads()
             v.set_route(route[:a + 1] + route[b - 1:a:-1] + route[b:])
+            v.set_loads(loads[:a + 1] + loads[b - 1:a:-1] + loads[b:])
     return vehicles
 
 
@@ -149,10 +150,12 @@ def inter_two_opt(prob: ProblemInstance, max_length_alteration=-1):
         l1, l2, y, b = valid[s]
         v1 = vehicles[l1]
         v2 = vehicles[l2]
-        route1 = deepcopy(v1.route())
-        route2 = v2.route()
+        route1, loads1 = deepcopy(v1.route()), deepcopy(v1.loads())
+        route2, loads2 = v2.route(), v2.loads()
         v1.set_route(route1[:y] + route2[b:])
         v2.set_route(route2[:b] + route1[y:])
+        v1.set_loads(loads1[:y] + loads2[b:])
+        v2.set_loads(loads2[:b] + loads1[y:])
     return vehicles
 
 
@@ -255,9 +258,10 @@ def intra_segment_swap(prob: ProblemInstance, max_segment_length=-1):
         swaps.sort(reverse=True)
         for s in swaps:
             a1, b1, a2, b2 = s
-            route = v.route()
-            original_route = prob.vehicles[k].route()
+            route, loads = v.route(), v.loads()
+            original_route, original_loads = prob.vehicles[k].route(), prob.vehicles[k].loads()
             v.set_route(route[:a1 + 1] + original_route[a2 + 1:b2] + route[b1:])
+            v.set_loads(loads[:a1 + 1] + original_loads[a2 + 1:b2] + loads[b1:])
     return vehicles
 
 
@@ -355,9 +359,10 @@ def inter_segment_swap(prob: ProblemInstance, max_segment_length=10):
         swaps.sort(reverse=True)
         for s in swaps:
             a1, b1, l2, a2, b2 = s
-            route1 = v1.route()
-            route2 = prob.vehicles[l2].route()
+            route1, loads1 = v1.route(), v1.loads()
+            route2, loads2 = prob.vehicles[l2].route(), prob.vehicles[l2].loads()
             v1.set_route(route1[:a1 + 1] + route2[a2 + 1:b2] + route1[b1:])
+            v1.set_loads(loads1[:a1 + 1] + loads2[a2 + 1:b2] + loads1[b1:])
     return vehicles
 
 

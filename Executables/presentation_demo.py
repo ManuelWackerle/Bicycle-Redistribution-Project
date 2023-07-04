@@ -24,7 +24,7 @@ kwargs = {
 
 # =========================================================================================== BUILDING THE GRAPH
 
-graph, node_info = loaders.load_subset_from_ordered_nodes(nodes=kwargs['graph_size'], randomness=False)
+graph, node_info = loaders.load_subset_from_ordered_nodes(nodes=kwargs['graph_size'], cost='time', randomness=False)
 vehicles = [Vehicle(capacity=kwargs['capacity'], vehicle_id=str(i)) for i in range(kwargs['num_vehicles'])]
 problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, depot='0', verbose=0)
 

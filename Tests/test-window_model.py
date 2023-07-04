@@ -109,7 +109,7 @@ class TestWindowModel(TestLNS):
         elif self.dataset == 'nyc':
             original_graph, node_info, _depot = load_graph('nyc_instance', location='nyc')
         elif self.dataset == 'munich':
-            original_graph, node_info = load_subset_from_ordered_nodes(nodes=self.nodes, centeredness=self.centeredness, randomness=self.randomness)
+            original_graph, node_info = load_subset_from_ordered_nodes(nodes=self.nodes, cost='time', centeredness=self.centeredness, randomness=self.randomness)
             _depot = '0'
         else:
             raise Exception("Unexpected dataset name. It should be among 'munich', 'nyc_dummy', or 'nyc'")

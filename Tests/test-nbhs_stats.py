@@ -44,7 +44,7 @@ PATH = os.path.join(os.getcwd(), 'results')
 
 
 def _get_problem_instance():
-    graph, node_info = load_subset_from_ordered_nodes(nodes=kwargs['nodes'], centeredness=kwargs["centeredness"], randomness=True)
+    graph, node_info = load_subset_from_ordered_nodes(nodes=kwargs['nodes'], cost='time', centeredness=kwargs["centeredness"], randomness=True)
     vehicles = [Vehicle(capacity=kwargs['vehicle_capacity'], vehicle_id=str(i), distance_limit=kwargs["distance_limit"])
                 for i in range(kwargs['number_of_vehicles'])]
 

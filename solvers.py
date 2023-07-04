@@ -153,7 +153,7 @@ def change_nbh_sequential(problem, modified_vehicles, nbh, nbh_last_success, ord
         [1,1,2,1, 1,2,3,1, 1,2,3,4,1 ... ]
     """
 
-    if problem.calculate_distances() > problem.calculate_distances(modified_vehicles):
+    if problem.calculate_costs() > problem.calculate_costs(modified_vehicles):
         print("Changing from neighbourhood ", nbh, "to neighbourhood 0") if verbose == 1 else None
         problem.vehicles = modified_vehicles
         problem.calculate_loading_mf()
@@ -173,7 +173,7 @@ def change_nbh_cyclic(problem, modified_vehicles, nbh, nbh_last_success, ordered
         keep cycling through all operators until none of them provide an improvement. 
         [1,2,3,4, 1,2,3,4, 1,2,3,4... ]
     """
-    if problem.calculate_distances() > problem.calculate_distances(modified_vehicles):
+    if problem.calculate_costs() > problem.calculate_costs(modified_vehicles):
         # print("Changing from neighbourhood ", nbh, "to neighbourhood ", nbh + 1) if verbose == 1 else None
         problem.vehicles = modified_vehicles
         nbh_last_success[0] = nbh
@@ -191,7 +191,7 @@ def change_nbh_pipe(problem, modified_vehicles, nbh, nbh_last_success: [], order
         If an operator provides an improvement, use it again, otherwise use the next operator.
         [1,1,1,1, 2,2,2, 3,3,3,3,3...  1,1, 2, 3, ... ]
     """
-    if problem.calculate_distances(modified_vehicles) < problem.calculate_distances():
+    if problem.calculate_costs(modified_vehicles) < problem.calculate_costs():
         problem.vehicles = modified_vehicles
         nbh_last_success[0] = nbh
 
@@ -210,12 +210,12 @@ def change_nbh_check_all(problem, modified_vehicles, nbh, nbh_last_success: [], 
         Compute the solutions by all operators and return the best. 
         [best(1,2,3,4), best(1,2,3,4), ... ]
     """
-    original_distance = problem.calculate_distances()
+    original_distance = problem.calculate_costs()
     best_distance = original_distance
     best_vehicles = problem.vehicles
     for operator in ordered_nbhs:
         new_vehicle_routes = operator(problem)
-        new_distance = problem.calculate_distances(new_vehicle_routes)
+        new_distance = problem.calculate_costs(new_vehicle_routes)
         if new_distance < best_distance:
             best_distance = new_distance
             best_vehicles = new_vehicle_routes
@@ -226,8 +226,8 @@ def change_nbh_check_all(problem, modified_vehicles, nbh, nbh_last_success: [], 
         return -1
 
 
-def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=change_nbh_sequential,
-                                timeout=10, plot=True, verbose=0):
+def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=change_nbh_cyclic,
+                                timeout=10, plot=False, verbose=0):
     """
         General VNS with VND
         :param problem_instance: current array of routes for all vehicles
@@ -246,10 +246,11 @@ def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=c
     time_hist = []
     operation_hist = []
 
-    distance_hist.append(problem_instance.calculate_distances())
     time_start = time.time()
-    time_hist.append(0)
-    operation_hist.append(0)
+    if plot:
+        distance_hist.append(problem_instance.calculate_costs())
+        time_hist.append(0)
+        operation_hist.append(0)
 
     while nbh_index < len(ordered_nbhs) and time.time() < start_time + timeout:
 
@@ -263,13 +264,15 @@ def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=c
             problem_instance.display_results(False)
 
         new_vehicle_routes = ordered_nbhs[nbh_index](problem_instance)
+
         nbh_index = change_nbh(problem_instance, new_vehicle_routes, nbh_index, nbh_last_success, ordered_nbhs, verbose)
 
         if verbose == 1:
             print('(after)   ', end='')
             problem_instance.display_results(False)
+
         if plot:
-            distance_hist.append(problem_instance.calculate_distances())
+            distance_hist.append(problem_instance.calculate_costs())
             time_hist.append(time.time() - time_start)
             operation_hist.append(nbh_index)
 

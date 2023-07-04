@@ -8,7 +8,7 @@ class Vehicle(object):
     """
     Vehicle: contains vehicle identification, capacity and vehicle route information.
     """
-    def __init__(self, capacity: int, vehicle_id: str, depot='0', distance_limit=100):
+    def __init__(self, capacity: int, vehicle_id: str, depot='0', stop_duration=40, load_duration=15, distance_limit=100):
         """
         Initializes the vehicle class
         :param capacity: Maximum number of bikes that the vehicle can carry at any time
@@ -23,6 +23,8 @@ class Vehicle(object):
         self._distance = 0
         self._current_position = None
         self._current_load = 0
+        self.stop_duration = stop_duration
+        self.load_duration = load_duration
         self._distance_limit = distance_limit
 
     def add_stop(self, stop, load):
@@ -155,10 +157,9 @@ class ProblemInstance:
 
     def calculate_distances(self, vehicles=None):
         """
-            Given a set of vehicles with corresponding routes, calculate the total distance travelled
-            :param vehicles: array of vehicle objects
-            :return total: the total distance travelled in metres
+            Deprecated! use calculate_costs instead
         """
+        print("Warning: this method is deprecated: use 'calculate costs()' instead")
         total = 0
         if vehicles is None:
             vehicles = self.vehicles
@@ -169,10 +170,9 @@ class ProblemInstance:
 
     def calculate_distance(self, vehicle):
         """
-            Given a single vehicles with a corresponding route, calculate the distance travelled by the vehicle
-            :param vehicle: an object of class Vehicle
-            :return dist: the distance travelled in metres
+            Deprecated! use calculate_cost instead
         """
+        print("Warning: this method is deprecated: use 'calculate cost()' instead")
         dist = 0
         prev = vehicle.route()[0]
         for s in range(1, len(vehicle.route())):
@@ -201,17 +201,14 @@ class ProblemInstance:
             :param vehicle: an object of class Vehicle
             :return cost: the cost in terms of travel time
         """
-        stop_duration = 40
-        load_duration = 15
-
         dist = 0
         prev = vehicle.route()[0]
         prev_load = 0
         for s in range(1, len(vehicle.route())):
             move = abs(vehicle.loads()[s - 1] - prev_load)
             node = vehicle.route()[s]
-            dist += self.distance(prev, node) + load_duration * move
-            dist += round(self.node_data[node]['ff_ratio'] * move) * stop_duration
+            dist += self.distance(prev, node) + vehicle.load_duration * move
+            dist += round(self.node_data[node]['ff_ratio'] * move) * vehicle.stop_duration
             prev = node
             prev_load = vehicle.loads()[s - 1]
         vehicle.update_distance(dist)

@@ -21,6 +21,8 @@ kwargs = {
     'graph_size_step':   50,
     'graph_variations':  1,
     'trials_per_graph':  10,
+    'stop_duration': 40,
+    'load_duration': 15,
     'timeout':           60,
     'ordered_nbhs': [ops.intra_two_opt, ops.intra_segment_swap, ops.inter_two_opt, ops.inter_segment_swap,],
     'nbh_change_set': [vns.change_nbh_cyclic],

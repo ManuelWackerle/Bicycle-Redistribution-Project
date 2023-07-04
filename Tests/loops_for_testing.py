@@ -28,6 +28,9 @@ def test_loop_vns(kwargs):
     capacity_max = kwargs.get('capacity_max', 15)
     capacity_step = kwargs.get('capacity_step', 1)
 
+    stopping_duration = kwargs.get('stop_duration', 40)
+    loading_duration = kwargs.get('load_duration', 15)
+
     nbh_change_set = kwargs.get('nbh_change_set', [solvers.change_nbh_cyclic])
     ordered_nbhs = kwargs.get('ordered_nbhs',
                               [ops.intra_two_opt, ops.intra_segment_swap, ops.inter_two_opt,
@@ -41,22 +44,22 @@ def test_loop_vns(kwargs):
     for key, value in kwargs.items():
         writer.writerow([key, value])
 
-    headings = ["graph_size", "graph_instance", "num_vehicles", "capacity", "trial", "greedy_distance",]
+    headings = ["graph_size", "graph_instance", "num_vehicles", "capacity", "trial", "greedy_cost",]
     for nbh_change in nbh_change_set:
         if nbh_change == solvers.change_nbh_cyclic:
-            headings.append("vns_cyclic_distance")
+            headings.append("vns_cyclic_cost")
             headings.append("vns_cyclic_time")
 
         elif nbh_change == solvers.change_nbh_pipe:
-            headings.append("vns_pipe_distance")
+            headings.append("vns_pipe_cost")
             headings.append("vns_pipe_time")
 
         elif nbh_change == solvers.change_nbh_sequential:
-            headings.append("vns_seq_distance")
+            headings.append("vns_seq_cost")
             headings.append("vns_seq_time")
 
         elif nbh_change == solvers.change_nbh_check_all:
-            headings.append("vns_all_distance")
+            headings.append("vns_all_cost")
             headings.append("vns_all_time")
 
         else:
@@ -67,25 +70,26 @@ def test_loop_vns(kwargs):
     for n in range(graph_size, graph_size_max + 1, graph_size_step):
         print("\nProblem Instance of size {} with {} vehicles of capacity {}"
               .format(n, num_vehicles, capacity))
-        print("       | veh | cap | greedy dist  | vns distance |  vns time  | improved |  change_nbh_method")
+        print("       | veh | cap | greedy durt  | vns duration |  vns time  | improved |  change_nbh_method")
 
         for m in range(graph_variations): #try different graph variations
             #Load Problem Instance
-            graph, node_info = load_subset_from_ordered_nodes(nodes=n, centeredness=10 - m * 2)
+            graph, node_info = load_subset_from_ordered_nodes(nodes=n, cost='time', centeredness=10 - m * 2)
             # graph, node_info = load_graph('nyc_instance_dummy', location='nyc_dummy')
             print("--------- new graph ----------")
             for v in range(num_vehicles, num_vehicles_max + 1, num_vehicles_step):
                 for c in range(capacity, capacity_max + 1, capacity_step):
-                    vehicles = [Vehicle(capacity=c, vehicle_id=str(i), distance_limit=0) for i in range(v)]
+                    vehicles = [Vehicle(capacity=c, vehicle_id=str(i), stop_duration=stopping_duration,
+                                        load_duration=loading_duration, distance_limit=0) for i in range(v)]
                     problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)
 
                     for trial in range(trials_per_graph):
                         solvers.greedy_routing(problem, dist_weight=2, randomness=True)
-                        greedy_distance = problem.calculate_distances()
+                        greedy_cost = problem.calculate_costs()
                         saved_problem = deepcopy(problem)
 
-                        gd = round(greedy_distance) / 1000
-                        results = [n, m, v, c, trial, gd]
+                        gd = round(greedy_cost / 60, 2)
+                        results = [n, m, v, c, trial, round(greedy_cost)]
 
                         for nbh_change in nbh_change_set:
                             problem = deepcopy(saved_problem)
@@ -93,15 +97,15 @@ def test_loop_vns(kwargs):
                             start1 = time.time()
                             solvers.general_variable_nbh_search(problem, ordered_nbhs, change_nbh=nbh_change, timeout=300, verbose=0)
                             end1 = time.time()
-                            distance = problem.calculate_distances()
+                            cost = problem.calculate_costs()
 
-                            vd = round(distance) / 1000
+                            vd = round(cost / 60,  2)
                             vt = round(end1 - start1, 3)
-                            results.append(vd)
+                            results.append(round(cost))
                             results.append(vt)
 
-                            im = round((1 - distance / greedy_distance) * 100, 1)
-                            print("{:5}: | {:3} | {:3} |{:11}km |{:11}km |{:10}s |{:8}% |  {}"
+                            im = round((1 - cost / greedy_cost) * 100, 1)
+                            print("{:5}: | {:3} | {:3} |{:10}min |{:10}min |{:10}s |{:8}% |  {}"
                                   .format(trial, v, c, gd, vd, vt, im, nbh_change.__name__))
 
                         writer.writerow(results)
@@ -123,6 +127,9 @@ def test_loop_vns_multi_init(kwargs):
     capacity_max = kwargs.get('capacity_max', 15)
     capacity_step = kwargs.get('capacity_step', 1)
 
+    stopping_duration = kwargs.get('stop_duration', 40)
+    loading_duration = kwargs.get('load_duration', 15)
+
     destruction_degrees = kwargs.get('large_nbhs', [])
     ordered_nbhs = kwargs.get('ordered_nbhs',
                               [ops.intra_two_opt, ops.intra_segment_swap, ops.inter_two_opt,
@@ -139,34 +146,35 @@ def test_loop_vns_multi_init(kwargs):
     for key, value in kwargs.items():
         writer.writerow([key, value])
 
-    headings = ["graph_size", "graph_instance", "num_vehicles", "capacity", "trial", "greedy_distance",
-                "vns_distance", "vns_time", "random_dist", "vns_distance", "vns_time"]
+    headings = ["graph_size", "graph_instance", "num_vehicles", "capacity", "trial", "greedy_cost",
+                "vns_cost", "vns_time", "random_dist", "vns_cost", "vns_time"]
     writer.writerow(headings)
 
     for n in range(graph_size, graph_size_max + 1, graph_size_step):
         print("\nProblem Instance of size {} with {} vehicles of capacity {}"
               .format(n, num_vehicles, capacity))
-        print("       | greedy dist  | vns distance |  vns time  | random dist  | vns distance |  vns time  |")
+        print("       | greedy dist  | vns cost |  vns time  | random dist  | vns cost |  vns time  |")
         large_nbhs = [int(np.floor(n * element)) for element in destruction_degrees]
 
         for m in range(graph_variations):  # try different graph variations
             # Load Problem Instance
-            graph, node_info = load_subset_from_ordered_nodes(nodes=n, centeredness=10 - m * 2)
+            graph, node_info = load_subset_from_ordered_nodes(nodes=n, cost='time', centeredness=10 - m * 2)
             # graph, node_info = load_graph('nyc_instance_dummy', location='nyc_dummy')
 
             print("--------- new graph ----------")
             for v in range(num_vehicles, num_vehicles_max + 1, num_vehicles_step):
                 for c in range(capacity, capacity_max + 1, capacity_step):
-                    vehicles = [Vehicle(capacity=c, vehicle_id=str(i), distance_limit=0) for i in range(v)]
+                    vehicles = [Vehicle(capacity=c, vehicle_id=str(i), stop_duration=stopping_duration,
+                                        load_duration=loading_duration, distance_limit=0) for i in range(v)]
                     problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)
 
                     for trial in range(trials_per_graph):
                         saved_problem = deepcopy(problem)
                         solvers.greedy_routing(problem, dist_weight=2, randomness=True)
-                        greedy_distance = problem.calculate_distances()
+                        greedy_cost = problem.calculate_costs()
 
-                        gd = round(greedy_distance) / 1000
-                        results = [n, m, v, c, trial, gd]
+                        gd = round(greedy_cost / 60, 2)
+                        results = [n, m, v, c, trial, round(greedy_cost)]
 
                         start1 = time.time()
                         solvers.general_variable_nbh_search(problem, ordered_nbhs,
@@ -174,15 +182,15 @@ def test_loop_vns_multi_init(kwargs):
                                                             verbose=0)
                         end1 = time.time()
 
-                        distance = problem.calculate_distances()
-                        vd = round(distance) / 1000
+                        cost = problem.calculate_costs()
+                        vd = round(cost / 60,  2)
                         vt = round(end1 - start1, 3)
-                        results.append(vd)
+                        results.append(round(cost))
                         results.append(vt)
 
                         problem = saved_problem
                         solvers.random_routing(problem)
-                        rd = round(problem.calculate_distances()) / 1000
+                        rd = round(problem.calculate_costs()) / 60
 
                         start2 = time.time()
                         solvers.general_variable_nbh_search(problem, ordered_nbhs,
@@ -196,15 +204,15 @@ def test_loop_vns_multi_init(kwargs):
                         # )
                         end2 = time.time()
 
-                        distance = problem.calculate_distances()
-                        ld = round(distance) / 1000
+                        cost = problem.calculate_costs()
+                        ld = round(cost / 60,  2)
                         lt = round(end2 - start2, 3)
                         results.append(rd)
                         results.append(ld)
                         results.append(lt)
-                        im = round((1 - distance / greedy_distance) * 100, 1)
-                        print("{:5}: |{:11}km |{:11}km |{:10}s |{:11}km |{:11}km |{:10}s |"
-                              .format(m * trials_per_graph + trial, gd, vd, vt, rd, ld, lt))
+                        im = round((1 - cost / greedy_cost) * 100, 1)
+                        print("{:5}: |{:10}min |{:10}min |{:10}s |{:10}min |{:10}min |{:10}s |"
+                              .format(m * trials_per_graph + trial, round(greedy_cost), vd, vt, rd, ld, lt))
 
                         writer.writerow(results)
                         problem.reset()
@@ -226,6 +234,9 @@ def test_loop_vns_lns(kwargs):
     capacity_max = kwargs.get('capacity_max', 15)
     capacity_step = kwargs.get('capacity_step', 1)
 
+    stopping_duration = kwargs.get('stop_duration', 40)
+    loading_duration = kwargs.get('load_duration', 15)
+
     destruction_degrees = kwargs.get('large_nbhs', [])
     ordered_nbhs = kwargs.get('ordered_nbhs',
                               [ops.intra_two_opt, ops.intra_segment_swap, ops.inter_two_opt,
@@ -242,32 +253,33 @@ def test_loop_vns_lns(kwargs):
     for key, value in kwargs.items():
         writer.writerow([key, value])
 
-    headings = ["graph_size", "graph_instance", "num_vehicles", "capacity", "trial", "greedy_distance",
-                "vns_distance", "vns_time", "lns_distance", "lns_time"]
+    headings = ["graph_size", "graph_instance", "num_vehicles", "capacity", "trial", "greedy_cost",
+                "vns_cost", "vns_time", "lns_cost", "lns_time"]
     writer.writerow(headings)
 
     for n in range(graph_size, graph_size_max + 1, graph_size_step):
         print("\nProblem Instance of size {} with {} vehicles of capacity {}"
               .format(n, num_vehicles, capacity))
-        print("       | greedy dist  | vns distance |  vns time  | lns distance |  lns time  | improved |")
+        print("       | greedy dist  | vns cost |  vns time  | lns cost |  lns time  | improved |")
         large_nbhs = [int(np.floor(n * element)) for element in destruction_degrees]
 
         for m in range(graph_variations):  # try different graph variations
             # Load Problem Instance
-            graph, node_info = load_subset_from_ordered_nodes(nodes=n, centeredness=10 - m * 2)
+            graph, node_info = load_subset_from_ordered_nodes(nodes=n, cost='time', centeredness=10 - m * 2)
 
             print("--------- new graph ----------")
             for v in range(num_vehicles, num_vehicles_max + 1, num_vehicles_step):
                 for c in range(capacity, capacity_max + 1, capacity_step):
-                    vehicles = [Vehicle(capacity=c, vehicle_id=str(i), distance_limit=0) for i in range(v)]
+                    vehicles = [Vehicle(capacity=c, vehicle_id=str(i), stop_duration=stopping_duration,
+                                        load_duration=loading_duration, distance_limit=0) for i in range(v)]
                     problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)
 
                     for trial in range(trials_per_graph):
                         solvers.greedy_routing(problem, dist_weight=2, randomness=True)
-                        greedy_distance = problem.calculate_distances()
+                        greedy_cost = problem.calculate_costs()
 
-                        gd = round(greedy_distance) / 1000
-                        results = [n, m, v, c, trial, gd]
+                        gd = round(greedy_cost / 60, 2)
+                        results = [n, m, v, c, trial, round(greedy_cost)]
 
                         start1 = time.time()
                         solvers.general_variable_nbh_search(problem, ordered_nbhs,
@@ -275,10 +287,10 @@ def test_loop_vns_lns(kwargs):
                                                             verbose=0)
                         end1 = time.time()
 
-                        distance = problem.calculate_distances()
-                        vd = round(distance) / 1000
+                        cost = problem.calculate_costs()
+                        vd = round(cost / 60,  2)
                         vt = round(end1 - start1, 3)
-                        results.append(vd)
+                        results.append(round(cost))
                         results.append(vt)
 
                         start2 = time.time()
@@ -290,14 +302,14 @@ def test_loop_vns_lns(kwargs):
                         )
                         end2 = time.time()
 
-                        distance = problem.calculate_distances()
-                        ld = round(distance) / 1000
+                        cost = problem.calculate_costs()
+                        ld = round(cost / 60,  2)
                         lt = round(end2 - start2, 3)
                         results.append(ld)
                         results.append(lt)
-                        im = round((1 - distance / greedy_distance) * 100, 1)
-                        print("{:5}: |{:11}km |{:11}km |{:10}s |{:11}km |{:10}s |{:8}% |"
-                              .format(m * trials_per_graph + trial, gd, vd, vt, ld, lt, im))
+                        im = round((1 - cost / greedy_cost) * 100, 1)
+                        print("{:5}: |{:10}min |{:10}min |{:10}s |{:10}min |{:10}s |{:8}% |"
+                              .format(m * trials_per_graph + trial, round(greedy_cost), vd, vt, ld, lt, im))
 
                         writer.writerow(results)
                         problem.reset()

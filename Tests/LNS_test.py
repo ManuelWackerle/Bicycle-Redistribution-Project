@@ -14,7 +14,7 @@ Use this file to load, test and run different solution approaches on the data.
 """
 instances_dir = os.path.relpath('..\\..\\Problem Instances', os.path.dirname(os.path.abspath(os.getcwd())))
 instance = "sample_graph_02.csv"
-graph, node_info = load_subset_from_ordered_nodes(nodes=50, centeredness=5)
+graph, node_info = load_subset_from_ordered_nodes(nodes=50, cost='time', centeredness=5)
 # graph, node_info = load_graph(os.path.splitext(instance)[0], path=instances_dir, use_adjacency_matrix=False)
 instance_size = graph.number_of_nodes()
 

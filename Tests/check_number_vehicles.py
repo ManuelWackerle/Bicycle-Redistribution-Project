@@ -91,7 +91,7 @@ def check_optimal_number_vehicles(problem: ProblemInstance, num_vehicles: [int],
 if __name__ == '__main__':
 
     # Generate graph (randomly with a certain number of nodes)
-    graph, node_info = load_subset_from_ordered_nodes(nodes=50, centeredness=5)
+    graph, node_info = load_subset_from_ordered_nodes(nodes=50, cost='time', centeredness=5)
 
     # Mount problem instance with and without zero demand nodes
     problem = ProblemInstance(input_graph=graph, vehicles=[], node_data=node_info, verbose=0)
