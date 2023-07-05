@@ -276,7 +276,7 @@ def general_variable_nbh_search(problem_instance, ordered_nbhs: [], change_nbh=c
             time_hist.append(time.time() - time_start)
             operation_hist.append(nbh_index)
 
-    return distance_hist, time_hist, operation_hist if plot else None
+    return distance_hist, time_hist, operation_hist if plot else []
 
 
 def large_nbh_search(problem_instance, ordered_large_nbhs: [int], ordered_local_nbhs: [],
@@ -337,14 +337,14 @@ def large_nbh_search(problem_instance, ordered_large_nbhs: [int], ordered_local_
 
         # End of local improvement phase
         if change_large_nbh == change_nbh_cyclic:
-            distances_old = problem_instance.calculate_distances()
+            distances_old = problem_instance.calculate_costs()
             large_nbh_index_old = large_nbh_index
             large_nbh_index = change_nbh_cyclic(problem_instance, candidate_problem.vehicles, large_nbh_index,
                                                 nbh_last_success, ordered_large_nbhs, verbose=0)
             if large_verbose == 1 and large_nbh_index < len(ordered_large_nbhs):
                 print("Large neighbourhood change remove ", ordered_large_nbhs[large_nbh_index_old],
                       "to remove", ordered_large_nbhs[large_nbh_index], "stations")
-            if distances_old == problem_instance.calculate_distances():
+            if distances_old == problem_instance.calculate_costs():
                 break
 
         elif change_large_nbh == change_nbh_pipe:

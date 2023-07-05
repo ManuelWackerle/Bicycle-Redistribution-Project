@@ -12,10 +12,19 @@ import time
 
 
 kwargs = {
-    'nodes':                100,
+    'nodes':                250,
     'num_vehicles':         5,
     'vehicle_capacity':     15,
-    'vns_timeout':          60,  # seconds
+    'vns_timeout':          180,  # seconds
+
+    'stop_duration':     40,
+    'load_duration':     15,
+
+
+    'ordered_nbhs': [ops.intra_two_opt, ops.intra_segment_swap, ops.inter_two_opt, ops.inter_segment_swap, ops.multi_remove_and_insert_station],
+    'nbh_change_set': [solvers.change_nbh_cyclic, solvers.change_nbh_pipe, solvers.change_nbh_sequential, solvers.change_nbh_check_all],
+    'large_nbhs': [0.1, 0.15, 0.20, 0.30],
+    'large_timeout': 200,
 }
 
 
@@ -35,12 +44,12 @@ problem.display_results(show_instructions=False)
 
 
 # Run the VNS and time it
-# operator_seq = [ops.inter_segment_swap, ops.intra_segment_swap, ops.inter_two_opt, ops.intra_two_opt]
-operator_seq = [ops.inter_segment_swap, ops.intra_segment_swap, ops.intra_two_opt]
+operator_seq = [ops.inter_segment_swap, ops.intra_segment_swap, ops.inter_two_opt, ops.intra_two_opt]
+# operator_seq = [ops.inter_segment_swap, ops.intra_segment_swap, ops.intra_two_opt]
 start_time = time.time()
 
 distance_hist, time_hist, operation_hist = solvers.general_variable_nbh_search(
-    problem, operator_seq, change_nbh=solvers.change_nbh_pipe, timeout=kwargs['vns_timeout'], verbose=0)
+    problem, operator_seq, change_nbh=solvers.change_nbh_cyclic, timeout=kwargs['vns_timeout'], verbose=1)
 problem.calculate_loading_mf()
 
 end_time = time.time()

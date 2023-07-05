@@ -29,7 +29,7 @@ problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_i
 # Solve the problem
 solvers.greedy_routing(problem)
 problem_copy = deepcopy(problem)
-initial_dist = problem.calculate_distances()
+initial_dist = problem.calculate_costs()
 
 # Define local neighbours
 ordered_nbhs = [op.intra_two_opt, op.intra_or_opt, op.remove_and_insert_station]
@@ -48,7 +48,7 @@ distance_hist_lns, time_hist_lns, operation_hist_lns, time_shake, shake_effect =
                                                                                                           )
 print("*** Final result using LNS ***")
 print("Time taken", time.time()-start)
-print("Reduction: ", (-problem.calculate_distances() + initial_dist) / initial_dist * 100, "%")
+print("Reduction: ", (-problem.calculate_costs() + initial_dist) / initial_dist * 100, "%")
 problem.display_results()
 
 print("*** Showing improvement with VNS ***")
@@ -61,7 +61,7 @@ distance_hist, time_hist, operation_hist = solvers.general_variable_nbh_search(p
 
 print("*** Final Result without LNS ***")
 print("Time taken: ", time.time()-start)
-print("Reduction: ", (-problem_copy.calculate_distances() + initial_dist) / initial_dist * 100, "%")
+print("Reduction: ", (-problem_copy.calculate_costs() + initial_dist) / initial_dist * 100, "%")
 problem_copy.display_results()
 
 plt.plot(time_hist, distance_hist, color='b', label="bare-vns")

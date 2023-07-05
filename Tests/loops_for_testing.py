@@ -272,7 +272,7 @@ def test_loop_vns_lns(kwargs):
                 for c in range(capacity, capacity_max + 1, capacity_step):
                     vehicles = [Vehicle(capacity=c, vehicle_id=str(i), stop_duration=stopping_duration,
                                         load_duration=loading_duration, distance_limit=0) for i in range(v)]
-                    problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)
+                    problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=1)
 
                     for trial in range(trials_per_graph):
                         solvers.greedy_routing(problem, dist_weight=2, randomness=True)
@@ -284,7 +284,7 @@ def test_loop_vns_lns(kwargs):
                         start1 = time.time()
                         solvers.general_variable_nbh_search(problem, ordered_nbhs,
                                                             change_nbh=solvers.change_nbh_cyclic, timeout=300,
-                                                            verbose=0)
+                                                            verbose=1)
                         end1 = time.time()
 
                         cost = problem.calculate_costs()
@@ -309,7 +309,7 @@ def test_loop_vns_lns(kwargs):
                         results.append(lt)
                         im = round((1 - cost / greedy_cost) * 100, 1)
                         print("{:5}: |{:10}min |{:10}min |{:10}s |{:10}min |{:10}s |{:8}% |"
-                              .format(m * trials_per_graph + trial, round(greedy_cost), vd, vt, ld, lt, im))
+                              .format(m * trials_per_graph + trial, gd, vd, vt, ld, lt, im))
 
                         writer.writerow(results)
                         problem.reset()

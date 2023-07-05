@@ -155,7 +155,7 @@ class ProblemInstance:
             dist += self.distance(u, v)
         return dist
 
-    def calculate_distances(self, vehicles=None):
+    def calculate_costs(self, vehicles=None):
         """
             Deprecated! use calculate_costs instead
         """
@@ -364,7 +364,7 @@ class ProblemInstance:
                 results += line + "|{:>3}: ".format(v.route()[last + 1]) + "u{:<2}( 0)|".format(prev_load)
             results += "\n"
 
-        d = round(self.calculate_distances()/1000, 3)
+        d = round(self.calculate_costs()/1000, 3)
         # d = round(self.calculate_costs()/1000, 3)
 
         success = bcolors.OKGREEN if self.allocated == self.imbalance else bcolors.FAIL

@@ -815,7 +815,7 @@ def destroy_rebuild(problem_instance, num_removal=3, verbose=0):
                 output_problem_copy = deepcopy(copied_problem_instance)
                 output_problem_copy.vehicles = inserted_vehicles
                 print('LN returned a distinct feasible solution with distance '
-                      + str(output_problem_copy.calculate_distances()) + '.')
+                      + str(output_problem_copy.calculate_costs()) + '.')
 
             return inserted_vehicles
         if insert_ratio < 1:
