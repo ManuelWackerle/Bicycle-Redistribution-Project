@@ -97,6 +97,8 @@ def test_loop_vns(kwargs):
                             start1 = time.time()
                             solvers.general_variable_nbh_search(problem, ordered_nbhs, change_nbh=nbh_change, timeout=300, verbose=0)
                             end1 = time.time()
+                            problem.calculate_loading_mf()
+                            assert problem.allocated == problem.imbalance
                             cost = problem.calculate_costs()
 
                             vd = round(cost / 60,  2)
@@ -181,6 +183,8 @@ def test_loop_vns_multi_init(kwargs):
                                                             change_nbh=solvers.change_nbh_cyclic, timeout=300,
                                                             verbose=0)
                         end1 = time.time()
+                        problem.calculate_loading_mf()
+                        assert problem.allocated == problem.imbalance
 
                         cost = problem.calculate_costs()
                         vd = round(cost / 60,  2)
@@ -272,7 +276,7 @@ def test_loop_vns_lns(kwargs):
                 for c in range(capacity, capacity_max + 1, capacity_step):
                     vehicles = [Vehicle(capacity=c, vehicle_id=str(i), stop_duration=stopping_duration,
                                         load_duration=loading_duration, distance_limit=0) for i in range(v)]
-                    problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=1)
+                    problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=0)
 
                     for trial in range(trials_per_graph):
                         solvers.greedy_routing(problem, dist_weight=2, randomness=True)
@@ -282,10 +286,11 @@ def test_loop_vns_lns(kwargs):
                         results = [n, m, v, c, trial, round(greedy_cost)]
 
                         start1 = time.time()
-                        solvers.general_variable_nbh_search(problem, ordered_nbhs,
-                                                            change_nbh=solvers.change_nbh_cyclic, timeout=300,
-                                                            verbose=1)
+                        solvers.general_variable_nbh_search(problem, ordered_nbhs, change_nbh=solvers.change_nbh_cyclic,
+                                                            timeout=300, verbose=0)
                         end1 = time.time()
+                        problem.calculate_loading_mf()
+                        assert problem.allocated == problem.imbalance
 
                         cost = problem.calculate_costs()
                         vd = round(cost / 60,  2)
@@ -301,11 +306,13 @@ def test_loop_vns_lns(kwargs):
                             timeout=timeout, large_timeout=large_timeout, local_verbose=0, large_verbose=0
                         )
                         end2 = time.time()
+                        problem.calculate_loading_mf()
+                        assert problem.allocated == problem.imbalance
 
                         cost = problem.calculate_costs()
                         ld = round(cost / 60,  2)
                         lt = round(end2 - start2, 3)
-                        results.append(ld)
+                        results.append(round(cost))
                         results.append(lt)
                         im = round((1 - cost / greedy_cost) * 100, 1)
                         print("{:5}: |{:10}min |{:10}min |{:10}s |{:10}min |{:10}s |{:8}% |"

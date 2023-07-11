@@ -344,6 +344,7 @@ def large_nbh_search(problem_instance, ordered_large_nbhs: [int], ordered_local_
             if large_verbose == 1 and large_nbh_index < len(ordered_large_nbhs):
                 print("Large neighbourhood change remove ", ordered_large_nbhs[large_nbh_index_old],
                       "to remove", ordered_large_nbhs[large_nbh_index], "stations")
+            problem_instance.calculate_loading_mf()
             if distances_old == problem_instance.calculate_costs():
                 break
 

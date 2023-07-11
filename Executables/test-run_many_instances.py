@@ -16,7 +16,7 @@ kwargs = {
     'capacity':          15,
     'capacity_max':      15,
     'capacity_step':     1,
-    'graph_size':        300,
+    'graph_size':        50,
     'graph_size_max':    500,
     'graph_size_step':   50,
     'graph_variations':  3,
@@ -33,6 +33,6 @@ kwargs = {
 
 print("Collecting Stats")
 start = time.time()
-test.test_loop_vns(kwargs)
+test.test_loop_vns_lns(kwargs)
 stop = time.time()
 print("TEST COMPLETE. (Runtime: {} minutes)\n".format(round((stop - start)/60, 1)))

@@ -181,7 +181,7 @@ class ProblemInstance:
         vehicle.update_distance(dist)
         return dist
 
-    def calculate_costs(self, vehicles=None):
+    def calculate_costs(self, vehicles=None, use_ff_ratio=False):
         """
             Given a set of vehicles with corresponding routes, calculate the total distance travelled
             :param vehicles: array of vehicle objects
@@ -191,11 +191,11 @@ class ProblemInstance:
         if vehicles is None:
             vehicles = self.vehicles
         for v in vehicles:
-            total += self.calculate_cost(v)
+            total += self.calculate_cost(v, use_ff_ratio)
         self.average_distance = total/len(vehicles)
         return total
 
-    def calculate_cost(self, vehicle):
+    def calculate_cost(self, vehicle, use_ff_ratio=False):
         """
             Given a single vehicles with a corresponding route, calculate the cost for each vehicle
             :param vehicle: an object of class Vehicle
@@ -208,7 +208,8 @@ class ProblemInstance:
             move = abs(vehicle.loads()[s - 1] - prev_load)
             node = vehicle.route()[s]
             dist += self.distance(prev, node) + vehicle.load_duration * move
-            dist += round(self.node_data[node]['ff_ratio'] * move) * vehicle.stop_duration
+            if use_ff_ratio:
+                dist += round(self.node_data[node]['ff_ratio'] * move) * vehicle.stop_duration
             prev = node
             prev_load = vehicle.loads()[s - 1]
         vehicle.update_distance(dist)
@@ -351,8 +352,8 @@ class ProblemInstance:
         if show_instructions:
             results += "total distance || instructions   <station>: <load/unload bikes> (<total on vehicle>)"
             for v in self.vehicles:
-                dist = self.calculate_distance(v)
-                line = "\nVehicle #{:<3} {:>12}km |".format(v.id(), round(dist/1000, 3))
+                dist = self.calculate_cost(v)
+                line = "\nVehicle #{:<3} {:>12}km |".format(v.id(), round(dist/3600, 3))
                 prev_load, last = 0, -1
                 for s in range(len(v.route())-1):
                     load = v.loads()[s]
@@ -364,13 +365,14 @@ class ProblemInstance:
                 results += line + "|{:>3}: ".format(v.route()[last + 1]) + "u{:<2}( 0)|".format(prev_load)
             results += "\n"
 
-        d = round(self.calculate_costs()/1000, 3)
+        d = round(self.calculate_costs()/3600, 3)
+        dff = round(self.calculate_costs(use_ff_ratio=True) / 3600, 3)
         # d = round(self.calculate_costs()/1000, 3)
 
         success = bcolors.OKGREEN if self.allocated == self.imbalance else bcolors.FAIL
-        results += bcolors.BOLD + bcolors.OKGREEN + "Total Distance:{:10}km".format(d) + bcolors.ENDC + " ||  "
-        results += success + bcolors.BOLD + " Total Rebalanced: {}/{}".format(self.allocated,
-                                                                              self.imbalance) + bcolors.ENDC
+        results += bcolors.BOLD + bcolors.OKGREEN + "Total Duration:{:10}h ({:8}h)".format(d, dff) + bcolors.ENDC
+        results += " ||  " + success + bcolors.BOLD + " Total Rebalanced: {}/{}".format(self.allocated, self.imbalance)\
+                   + bcolors.ENDC
         print(results)
 
     def plot_vehicle_route(self, vehicle):

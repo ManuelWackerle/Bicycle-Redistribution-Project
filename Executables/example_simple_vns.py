@@ -12,7 +12,7 @@ import time
 
 
 kwargs = {
-    'nodes':                250,
+    'nodes':                500,
     'num_vehicles':         5,
     'vehicle_capacity':     15,
     'vns_timeout':          180,  # seconds
@@ -32,7 +32,9 @@ kwargs = {
 graph, node_info = load_subset_from_ordered_nodes(nodes=kwargs['nodes'], cost='time', randomness=False)
 
 vehicles = [Vehicle(capacity=kwargs['vehicle_capacity'], vehicle_id=str(i),
-                    depot=str(random.randint(0, kwargs['nodes'] - 1))) for i in range(kwargs['num_vehicles'])]
+                    depot='0') for i in range(kwargs['num_vehicles'])]
+# vehicles = [Vehicle(capacity=kwargs['vehicle_capacity'], vehicle_id=str(i),
+#                     depot=str(random.randint(0, kwargs['nodes'] - 1))) for i in range(kwargs['num_vehicles'])]
 problem = ProblemInstance(input_graph=graph, vehicles=vehicles, node_data=node_info, verbose=1)
 
 
