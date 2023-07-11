@@ -55,7 +55,9 @@ class TestBase(object):
         np_results = np.array(results)
         np_mean = np.round(np.mean(np_results, axis=0), decimals=2)
         np_std = np.round(np.std(np_results, axis=0), decimals=2)
-        return np_mean.tolist(), np_std.tolist()
+        np_max = np.round(np.max(np_results, axis=0), decimals=2)
+        np_min = np.round(np.min(np_results, axis=0), decimals=2)
+        return np_mean.tolist(), np_std.tolist(), np_max.tolist(), np_min.tolist()
 
     def show_plot(self, results, header):
         np_results = np.array(results)

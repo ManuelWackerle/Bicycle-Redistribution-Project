@@ -8,6 +8,8 @@ import os
 import time
 from multiprocessing import Pool
 from functools import partial
+import sys
+sys.path.append(os.getcwd())
 
 from copy import deepcopy
 import solvers
@@ -18,25 +20,26 @@ import numpy as np
 from test_base import TestLNS
 
 kwargs = {
-    'nodes': 250,
+    'nodes': 500,
     'centeredness': 5,
     'number_of_vehicles': 5,
-    'vehicle_capacity': 20,
+    'vehicle_capacity': 15,
     'distance_limit': 200000,  # meter
     'num_initial': 10,
     'num_processors': 5,
-    'ordered_nbhs': [ops.intra_two_opt, ops.intra_segment_swap, ops.inter_two_opt, ops.inter_segment_swap],
-    'ordered_large_nbhs': [30, 20, 10, 5, 3, 1, 15, 25, 40, 50],
-    'change_local_nbh': solvers.change_nbh_pipe,
-    'change_large_nbh': solvers.change_nbh_pipe,
-    'large_nbh_operator': ops.multi_remove_and_insert_station,
-    'local_timeout': 2*60,  # second
-    'large_timeout': 6*60,  # second
-    'local_verbose': 0,
-    'large_verbose': 0,
+    'ordered_nbhs': [ops.intra_two_opt,
+                     ops.intra_segment_swap,
+                     ops.inter_two_opt,
+                     ops.inter_segment_swap],
+    'ordered_large_nbhs': [0.1, 0.15, 0.2, 0.3],
+    'change_local_nbh': solvers.change_nbh_cyclic,
+    'change_large_nbh': solvers.change_nbh_cyclic,
+    'large_nbh_operator': ops.destroy_rebuild,
+    'local_timeout': 60,  # second
+    'large_timeout': 300,  # second
     'randomness': True,
-    'filename': 'test_compare_parallel_lns_vns_greedy.csv',
-    'num_try': 2,
+    'filename': 'test_compare_parallel_lns_vns_greedy_cyclic_redo.csv',
+    'num_try': 20,
     'read_only': False,
     'root': os.path.join(os.getcwd(), 'results'),
 }
@@ -69,7 +72,7 @@ class TestParallelLNS(TestLNS):
         best_dist = 1e+10
         best_instance = None
         for instance in problem_instances:
-            total = instance.calculate_distances()
+            total = instance.calculate_costs()
             if total < best_dist:
                 best_dist = total
                 best_instance = instance
@@ -101,7 +104,7 @@ class TestParallelLNS(TestLNS):
         g_time = time.time() - sg
         s_vns = time.time()
         vns_p = self.run_vns(deepcopy(problem))
-        vns_dist = vns_p.calculate_distances()
+        vns_dist = vns_p.calculate_costs()
         vns_time = time.time() - s_vns
         sp = time.time()
         p_dist = self.run_parallel_vns(deepcopy(problem))
@@ -123,18 +126,19 @@ class TestParallelLNS(TestLNS):
         return result
     
     def show_plot(self, results, header):
-        np_results = np.array(results)
-        np_mean = np.round(np.mean(np_results, axis=0), decimals=2)
-        np_std = np.round(np.std(np_results, axis=0), decimals=2)
+        # np_results = np.array(results)
+        # np_mean = np.round(np.mean(np_results, axis=0), decimals=2)
+        # np_std = np.round(np.std(np_results, axis=0), decimals=2)
 
-        colors = ['#F5A623', '#9013FE', '#7ED321', '#4A90E2', '#F8E71C', '#D0021B', 'r', 'b']
-        x = ['Greedy', 'VNS', 'Parallel', 'LNS', 'Par + LNS (1)', 'Par + LNS (2)']
-        plt.bar(x, np_mean[[0,2,4,6,8,10]]/1000, alpha=0.8, color=colors, yerr=np_std[[0,2,4,6,8,10]]/1000)
-        plt.ylabel('Total Distance [km]')
-        plt.show()
-        plt.bar(x, np_mean[[1,3,5,7,9,11]], alpha=0.8, color=colors, yerr=np_std[[1,3,5,7,9,11]])
-        plt.ylabel('Computational time [s]')
-        plt.show()
+        # colors = ['#F5A623', '#9013FE', '#7ED321', '#4A90E2', '#F8E71C', '#D0021B', 'r', 'b']
+        # x = ['Greedy', 'VNS', 'Parallel', 'LNS', 'Par + LNS (1)', 'Par + LNS (2)']
+        # plt.bar(x, np_mean[[0,2,4,6,8,10]]/1000, alpha=0.8, color=colors, yerr=np_std[[0,2,4,6,8,10]]/1000)
+        # plt.ylabel('Total Distance [km]')
+        # plt.show()
+        # plt.bar(x, np_mean[[1,3,5,7,9,11]], alpha=0.8, color=colors, yerr=np_std[[1,3,5,7,9,11]])
+        # plt.ylabel('Computational time [s]')
+        # plt.show()
+        return
 
 def main():
     test_instance = TestParallelLNS(kwargs=kwargs)
@@ -147,8 +151,8 @@ def main():
             num_try=kwargs.get('num_try', 100),
         )
 
-    mean, std = test_instance.get_stats(results)
-    print('{:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10}'.format('Dist [km]', 'Greedy', 'VNS', 'Par', 'LNS', 'Par+LNS(1)', 'Par+LNS(2)'))
+    mean, std, max, min = test_instance.get_stats(results)
+    print('{:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10}'.format('Deliv [s]', 'Greedy', 'VNS', 'Par', 'LNS', 'Par+LNS(1)', 'Par+LNS(2)'))
     print('{:>10} {:>10.2f} {:>10.2f} {:>10.2f} {:>10.2f} {:>10.2f} {:>10.2f}'.format('Mean', mean[0]/1000, mean[2]/1000, mean[4]/1000, mean[6]/1000, mean[8]/1000, mean[10]/1000))
     print('{:>10} {:>10.2f} {:>10.2f} {:>10.2f} {:>10.2f} {:>10.2f} {:>10.2f}'.format('Std', std[0]/1000, std[2]/1000, std[4]/1000, std[6]/1000, std[8]/1000, std[10]/1000))
 
